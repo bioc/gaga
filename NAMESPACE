@@ -1,0 +1,22 @@
+useDynLib(gaga)
+
+export( checkfit,
+        checkfit.gagafit,
+        classpred,
+        classpred.gagafit,
+        dcgamma,
+        findgenes,
+        findgenes.gagafit,
+        fit.gg,
+        getpar,
+        getpar.gagafit,
+        mcgamma,
+        parest,
+        parest.gagafit,
+        print.gagafit,
+        rcgamma,
+        sim.gg,
+        simnewsamples,
+        simnewsamples.gagafit,
+        powclasspred,
+        powclasspred.gagafit )

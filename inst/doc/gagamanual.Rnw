@@ -1,0 +1,500 @@
+\documentclass[a4paper,12pt]{article}
+%\VignetteIndexEntry{Manual for the gaga library}
+%\VignettePackage{gaga}
+
+\usepackage{amsmath}    % need for subequations
+\usepackage{amssymb}    %useful mathematical symbols
+\usepackage{bm}         %needed for bold greek letters and math symbols
+\usepackage{graphicx}   % need for PS figures
+%\usepackage{verbatim}   % useful for program listings
+%\usepackage{color}      % use if color is used in text
+\usepackage{hyperref}   % use for hypertext links, including those to external documents and URLs
+\usepackage{natbib}    %number and author-year style referencing
+\usepackage{epsf} 
+\usepackage{lscape} 
+\bibpunct{(}{)}{;}{a}{,}{,}
+
+%Theorem environments
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newenvironment{proof}[1][Proof]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+\newenvironment{definition}[1][Definition]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+\newenvironment{example}[1][Example]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+\newenvironment{remark}[1][Remark]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+\newcommand{\qed}{\nobreak \ifvmode \relax \else
+      \ifdim\lastskip<1.5em \hskip-\lastskip
+      \hskip1.5em plus0em minus0.5em \fi \nobreak
+      \vrule height0.75em width0.5em depth0.25em\fi}
+
+\pagestyle{empty} % use if page numbers not wanted
+
+\begin{document}
+
+\title{Manual for the R \texttt{gaga} library}
+\author{David Rossell \\
+\small{Department of Biostatistics} \\
+\small{The University of Texas M. D. Anderson Cancer Center} \\
+\small{Houston, TX.} \\
+\texttt{rosselldavid@gmail.com}}
+
+\date{}  %comment to include current date
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+\cite{newton:2001} and \cite{kendziorski:2003} introduced the Gamma-Gamma model to
+analyze microarray data, an elegant and parsimonious hierachical model that allows for
+the borrowing of information between genes.
+\cite{rossell:2007} showed that the assumptions of this model are
+too simplistic, which resulted in a rather poor fit to several real datasets,
+and developed two extensions of the model: GaGa and MiGaGa.
+The \texttt{gaga} library implements the GaGa and MiGaGa generalizations,
+which can be used both to find differentially expressed genes and to predict
+the class of a future sample ({\it e.g.} given the mRNA measurements for a new
+patient, predict whether the patient has cancer or is healthy). 
+
+We now briefly outline the \texttt{GaGa} and \texttt{MiGaGa} models.
+Let $x_{ij}$ be the expression measurement for gene $i$ in array $j$,
+and let $z_j$ indicate the group to which array belongs to
+({\it e.g.} $z_j=0$ for normal cells and $z_j=1$ for cancer cells).
+The GaGa models envisions the observations as arising from a gamma
+distribution, {\it i.e.}
+$x_{ij} \sim \mbox{Ga}(\alpha_{i,z_j},\alpha_{i,z_j}/\lambda_{i,z_j})$
+($\lambda_{i,z_j}$ is the mean),
+where $\alpha_{i,z_j}$ and $\lambda_{i,z_j}$
+arise from a gamma and an inverse gamma distribution, respectively:
+
+\begin{align}
+  \lambda_{i,k} | \delta_i,\alpha_0,\nu &\sim \mbox{IGa}(\alpha_0,\alpha_0/\nu) \mbox{, indep. for }i=1 \ldots  n \nonumber \\
+  \alpha_{i,k} | \delta_i,\beta,\mu & \sim \mbox{Ga}(\beta,\beta/\mu) \mbox{, indep. for }i=1 \ldots  n \nonumber \\
+  \delta_i|\bm{\pi} & \sim \mbox{Mult}(1,\bm{\pi}) \mbox{, indep. for } i=1 \ldots  n.
+\label{eq:modelgengg}
+\end{align}
+$\delta_1 \ldots \delta_n$ are latent variables indicating what expression
+pattern each gene follows (see Section \ref{sec:modelfit} for more details).
+For example, if there are only two groups $\delta_i$ indicates whether
+gene $i$ is differentially expressed or not.
+The Bayesian model is completed by specifying priors on the hyper-parameters
+that govern the hierarchy:
+\begin{align}
+  \alpha_0 &\sim \mbox{Ga}(a_{\alpha_0},b_{\alpha_0}); 
+  \nu \sim \mbox{IGa}(a_{\nu},b_{\nu}) \nonumber \\
+  \beta &\sim \mbox{Ga}(a_{\beta},b_{\beta}); 
+  \mu \sim \mbox{IGa}(a_{\mu},b_{\mu}) \nonumber \\
+  \bm{\pi} &\sim \mbox{Dirichlet}({\bf p}).
+\label{eq:priorgaga}
+\end{align}
+
+The \texttt{gaga} library provides some default values for the prior parameters
+that are a reasonable choice when the data has been normalized
+via the function \texttt{just.rma} 
+from the R library \texttt{affy} \cite{rpkg:affy} 
+or \texttt{just.gcrma} from the R library \texttt{just.gcrma}.
+The MiGaGa model extends GaGa by specifying a mixture of inverse gammas
+for $\nu$.
+Both models are fit using the routine \texttt{fit.gg}: the argument
+\texttt{nclust} indicates the number of components in the mixture
+(\texttt{nclust=1} corresponds to the GaGa model).
+
+In the remainder of this document we generate a simulated dataset and
+we show how to analyze it with the routines provided with the \texttt{gaga} library.
+In Section \ref{sec:simulate} we simulate a dataset based on the parameter
+estimates obtained from the Armstrong dataset \cite{armstrong:2002},
+as described in \cite{rossell:2007}.
+Section \ref{sec:modelfit} shows how to fit the model via MCMC sampling and
+in Section \ref{sec:gof} we assess its goodness-of-fit.
+Finally, in Sections \ref{sec:degenes} and \ref{sec:classpredict} we
+conduct inference. Section \ref{sec:degenes} shows how to find differentially
+expressed genes, while Section \ref{sec:classpredict}
+addresses class prediction.
+
+\section{Simulating the data}
+\label{sec:simulate}
+
+We start by loading the library and simulating mRNA expression levels
+for \texttt{n=100} genes and 2 groups, each with 6 samples.
+We set the seed for random number generation so that you can reproduce
+the results presented here.
+As we shall see in the future sections, we use the first five
+samples from each group to fit the model.
+We will then use the model to predict the class for the sixth sample.
+
+<<one>>=
+library(gaga)
+set.seed(10)
+n <- 100; m <- c(6,6)
+a0 <- 25.5; nu <- 0.109
+balpha <- 1.183; nualpha <- 1683
+probpat <- c(.95,.05)
+xsim <- sim.gg(n,m,p.de=probpat[2],a0,nu,balpha,nualpha)
+@ 
+
+The object \texttt{xsim} is a list with 3 components.
+\texttt{x} is a matrix containing the expression levels for the 100 genes
+and 12 samples. 
+\texttt{a} is a matrix containing the gene-specific $\alpha$ parameters
+(\texttt{a[,1]} contains parameters for the first group,
+\texttt{a[,2]} for the second),
+and \texttt{l} contains the gene-specific means $\lambda$.
+
+<<two>>=
+names(xsim)
+dim(xsim$x)
+dim(xsim$a)
+dim(xsim$l)
+@ 
+
+Figure \ref{fig:fig1}(a) shows
+the marginal distribution (kernel density estimate)
+of the simulated gene expression levels.
+Figure \ref{fig:fig1}(b) plots the simulated $(\alpha,\lambda)$
+pairs.
+The plots can be obtained with the following syntax:
+
+<<label=fig1aplot,include=FALSE>>=
+plot(density(xsim$x),xlab='Expression levels',main='')
+@
+
+<<label=fig1bplot,include=FALSE>>=
+plot(xsim$l,xsim$a,xlab='Mean',ylab='1/sqrt(CV)')
+@ 
+
+\setkeys{Gin}{width=0.5\textwidth} 
+\begin{figure}
+\begin{center}
+\begin{tabular}{cc}
+(a) & (b) \\
+<<label=fig1a,fig=TRUE,echo=FALSE>>=
+<<fig1aplot>>
+@ &
+<<label=fig1b,fig=TRUE,echo=FALSE>>=
+<<fig1bplot>>
+@ 
+\end{tabular}
+\end{center}
+\caption{(a): marginal density of the simulated data;
+(b): plot of the simulated $(\alpha,\lambda)$ pairs}
+\label{fig:fig1}
+\end{figure}
+
+
+
+\section{Model fit}
+\label{sec:modelfit}
+To fit the model we use the function \texttt{fit.gg}.
+First we need to specify a vector \texttt{groups} that
+indicates the group to which each sample belongs to.
+Second, we need to specify the gene expression patterns
+or hypotheses that we wish to entertain. 
+In our example, since we have two groups there really are
+only two possible expression patterns:
+
+\begin{description}
+\item Pattern 0 (null hypotheses): group 1 = group 2
+\item Pattern 1 (alternative hypothesis): group 1 $\neq$ group 2.
+\end{description}
+
+More precisely, under pattern 0 we have that $\alpha_{i1}=\alpha_{i2}$
+and $\lambda_{i1}=\lambda_{i2}$, while under pattern 1 $\alpha_{i1} \neq \alpha_{i2}$
+and $\lambda_{i2} \neq \lambda_{i2}$.
+We specify the patterns with a matrix with as many rows as patterns
+and as many columns as groups.
+For each row of the matrix ({\it i.e.} each hypothesis), we indicate that
+two groups are equal by assigning the same number to their corresponding columns.
+For example, in our two hypothesis case we would specify:
+
+
+<<three>>=
+groups <- rep(1:2,each=5)
+patterns <- matrix(c(0,0,0,1),2,2)
+patterns
+@ 
+
+For illustration, suppose that instead we had 3 groups and 4 hypotheses, as follows:
+
+\begin{description}
+\item Pattern 0: GROUP 1 = GROUP 2 = GROUP 3
+\item Pattern 1: GROUP 1 $\neq$ GROUP 2 = GROUP 3
+\item Pattern 2: GROUP 1 = GROUP 2 $\neq$ GROUP 3
+\item Pattern 3: GROUP 1 $\neq$ GROUP 2 $\neq$ GROUP 3
+\end{description}
+In this case we would specify
+
+\begin{verbatim}
+> patterns <- matrix(c(0,0,0,0,1,1,0,0,1,0,1,2),ncol=3,byrow=TRUE)
+> patterns
+     [,1] [,2] [,3]
+[1,]    0    0    0
+[2,]    0    1    1
+[3,]    0    0    1
+[4,]    0    1    2
+\end{verbatim}
+That is, the second row indicates that under the second hypothesis groups
+2 and 3 are equal, since they both have a \texttt{1} in their entries.
+The last row indicates that they are all different by
+specifying a different number in each entry.
+
+Now, to fit the GaGa model to our simulated data we use \texttt{fit.gg},
+with \texttt{nclust=1} (to fit the MiGaGa model we would set \texttt{nclust}
+to the number of components that we want in the mixture).
+We remove columns 6 and 12 from the dataset, {\it i.e.} we do not use
+them for the fit so that we can evaluate the out-of-sample behavior
+of the classifier built in Section \ref{sec:classpredict}.
+Here we use the option \texttt{trace=FALSE} to prevent iteration information
+from being printed. By default the routine performs \texttt{B=1000} MCMC
+iterations, which is typically enough for a GaGa model and it can be done
+reasonably fast. 
+
+<<four>>=
+patterns <- matrix(c(0,0,0,1),2,2)
+ggfit <- fit.gg(xsim$x[,c(-6,-12)],groups,patterns=patterns,nclust=1,trace=FALSE)
+@ 
+
+We can obtain iteration plots to visually assess the convergence of the chain.
+The component \texttt{mcmc} of \texttt{ggfit} contains an object of
+type \texttt{mcmc}, as defined in the library \texttt{coda}.
+Therefore, simply typing \texttt{plot(ggfit\$mcmc)} produces the
+plots in Figure \ref{fig:fig3} (only first plot shown).
+For more formal convergence diagnostics, see the documentation of the library \texttt{coda}.
+We see that convergence was reached very quickly.
+
+
+\setkeys{Gin}{width=0.8\textwidth} 
+<<label=fig3plot,include=FALSE>>=
+plot(ggfit$mcmc)
+@ 
+
+\begin{figure}
+\begin{center}
+<<label=fig3,fig=TRUE,echo=FALSE>>=
+<<fig3plot>>
+@
+\end{center}
+\caption{Plotting MCMC output}
+\label{fig:fig3}
+\end{figure}
+
+To obtain parameter estimates and the posterior probability that each gene
+is differentially expressed we use the function \texttt{parest}.
+We discard the first 100 MCMC iterations with \texttt{burnin=100},
+and we ask for 95\% posterior credibility intervals with \texttt{alpha=.05}.
+The slot \texttt{ci} of the returned object contains the credibility intervals.
+Note that they all include the true value.
+
+<<five>>=
+ggfit <- parest(ggfit,x=xsim$x[,c(-6,-12)],groups,burnin=100,alpha=.05)
+ggfit
+ggfit$ci
+@
+
+As an alternative, one can estimate the hyper-parameters via
+maximum likelihood. This is achieved by specifying \texttt{method='EBayes'}
+when calling \texttt{fit.gg}.
+Fitting the model via maximum likelihood is usually quicker, and in our
+experience it delivers similar results to the Bayesian fit.
+
+<<six>>=
+ggfit.eb <- fit.gg(xsim$x[,c(-6,-12)],groups,patterns=patterns,method='EBayes')  
+ggfit.eb <- parest(ggfit.eb,x=xsim$x[,c(-6,-12)],groups,alpha=.05)
+ggfit.eb
+@
+
+The parameter estimates are indeed similar to those obtained
+from the fully Bayesian fit.
+The slot \texttt{pp} in \texttt{ggfit} and \texttt{ggfit.eb}
+contains a matrix with the posterior probability
+of each expression pattern for each gene.
+For example, the first gene has a posterior probability of 0.993
+of following pattern 0 ({\it i.e.} being equally expressed)
+and a probability of 0.033 of following pattern 1 
+({\it i.e.} being differentially expressed) under the fully
+Bayesian fit, and 0.034 under the maximum likelihood fit.
+
+<<seven>>=
+dim(ggfit$pp)
+ggfit$pp[1,]
+ggfit.eb$pp[1,]
+@
+
+\section{Checking the goodness of fit}
+\label{sec:gof}
+
+To graphically assess the goodness of fit of the model,
+one can used prior-predictive or posterior-predictive checks.
+The latter, implemented in the function \texttt{checkfit},
+are based on drawing parameter values from the posterior
+distribution for each gene, and possibly using then to generate data
+values, and then compare the simulated values to the observed data.
+The data generated from the posterior predictive is compared to the 
+observed data in Figure \ref{fig:fig3}(a).
+Figure \ref{fig:fig3}(b)-(d) compares draws from the posterior 
+of $\alpha$ and $\lambda$ with their method of moments estimate,
+which is model-free.
+All plots indicate that the model has a reasonably good fit.
+The figures were generated with the following code:
+
+\setkeys{Gin}{width=0.5\textwidth} 
+<<label=fig4aplot,include=FALSE>>=
+ checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='data',main='')
+@
+
+\setkeys{Gin}{width=0.5\textwidth} 
+<<label=fig4bplot,include=FALSE>>=
+checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='shape',main='')
+@
+
+\setkeys{Gin}{width=0.5\textwidth} 
+<<label=fig4cplot,include=FALSE>>=
+checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='mean',main='')
+@
+
+\setkeys{Gin}{width=0.5\textwidth} 
+<<label=fig4dplot,include=FALSE>>=
+checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='shapemean',main='',xlab='Mean',ylab='1/sqrt(CV)')
+@
+
+
+\setkeys{Gin}{width=0.5\textwidth} 
+\begin{figure}
+\begin{center}
+\begin{tabular}{cc}
+(a) & (b) \\
+<<label=fig4a,fig=TRUE,echo=FALSE>>=
+<<fig4aplot>>
+@ &
+<<label=fig4b,fig=TRUE,echo=FALSE>>=
+<<fig4bplot>>
+@ 
+\\
+<<label=fig4c,fig=TRUE,echo=FALSE>>=
+<<fig4cplot>>
+@ &
+<<label=fig4d,fig=TRUE,echo=FALSE>>=
+<<fig4dplot>>
+@
+\end{tabular}
+\end{center}
+\caption{Assessing the goodness of fit.
+(a): compares samples from the posterior predictive to the observed data;
+(b): compares samples from the posterior of $\alpha$ to the method of moments estimate;
+(c): compares samples from the posterior of $\lambda$ to the method of moments estimate;
+(d): as (b) and (c) but plots the pairs $(\alpha,\lambda)$ instead of the kernel density estimates}
+\label{fig:fig4}
+\end{figure}
+
+
+It should be noted, however, that posterior-predictive plots can fail to detect
+departures from the model, since there is a double use of the data.
+Prior-predictive checks can be easily implemented using the function
+\texttt{sim.gg} and setting the hyper-parameters to their posterior mean.
+
+
+\section{Finding differentially expressed genes}
+\label{sec:degenes}
+
+The function \texttt{findgenes} finds differentially expressed genes,
+{\it i.e.} assigns each gene to an expression pattern.
+The problem is formalized as minizing the false negative
+rate, subject to an upper bound on the false discovery rate,
+say \texttt{fdrmax=0.05}.
+In a Bayesian sense, this is achieved by assigning to pattern 0 (null hypothesis)
+all genes for which the posterior probability of following pattern 0 is above a certain
+threshold \cite{mueller:2004}.
+The problem is then to find the optimal threshold, which can be done
+parametrically or non-parametrically through the use of permutations
+(for details see \cite{rossell:2007}).
+Here we explore both options, specifying \texttt{B=1000} permutations
+for the non-parametric option.
+
+<<eight>>=
+d <- findgenes(ggfit,xsim$x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
+d.nonpar <- findgenes(ggfit,xsim$x[,c(-6,-12)],groups,fdrmax=.05,parametric=FALSE,B=1000)
+dtrue <- (xsim$l[,1]!=xsim$l[,2])
+table(d$d,dtrue)
+table(d.nonpar$d,dtrue)
+@
+
+We set the variable \texttt{dtrue} to indicate 
+which genes were actually differentially expressed
+(easily achieved by comparing the columns of \texttt{xsim\$l}).
+The parametric version declares 4 genes to be DE, all of them
+true positives. It fails to find one of the DE genes.
+The non-parametric lists 5 genes as DE, one of them being
+a false positive. It fails to find one of the DE genes.
+To obtain an estimated frequentist FDR for each
+Bayesian FDR one can plot \texttt{d.nonpar\$fdrest}.
+The result, shown in Figure \ref{fig:fig4}, reveals
+that setting the Bayesian FDR at a 0.05 level results
+in an estimated frequentist FDR around 0.015.
+That is, calling \texttt{findgenes} with the option
+\texttt{parametric=TRUE} results in a slightly conservative
+procedure from a frequentist point of view.
+
+\setkeys{Gin}{width=0.5\textwidth} 
+<<label=fig5plot,include=FALSE>>=
+plot(d.nonpar$fdrest,type='l',xlab='Bayesian FDR',ylab='Estimated frequentist FDR')
+@
+
+\begin{figure}
+\begin{center}
+<<label=fig1,fig=TRUE,echo=FALSE>>=
+<<fig5plot>>
+@
+\end{center}
+\caption{Estimated frequenstist FDR vs. Bayesian FDR}
+\label{fig:fig5}
+\end{figure}
+
+\section{Class prediction}
+\label{sec:classpredict}
+
+We now use the fitted model to predict the class of the
+arrays number 6 and 12, neither of which were used to fit the model.
+We assume that the prior probability is 0.5 for each group,
+though in most settings this will not be realistical.
+For example, if \texttt{groups==2} indicates individuals with
+cancer, one would expect the prior probability to be well below
+0.5, say around 0.1. But if the individual had a positive result
+in some test that was administered previously, this probability
+would have increased, say to 0.4.
+
+Class prediction is implemented in the function \texttt{classpred}.
+The argument \texttt{xnew} contains the gene expression measurements for the new
+individuals, \texttt{x} is the data used to fit the model and
+\texttt{ngene} indicates the number of genes that should be used to build the classifier.
+It turns out that array 6 is correctly assigned to group 1
+and array 12 is correctly assigned to group 2.
+\texttt{classpred} also returns the posterior probability that
+the sample belongs to each group. We see that for the dataset
+at hand the posterior probability of belonging to the wrong group
+is essentially zero.
+Similarly good results are obtained when using setting \texttt{ngene} to
+either 1 (the minimum value) or to 100 (the maximum value).
+The fact that adding more gene to the classifier does not change its 
+performance is not surprising, since the classifier assigns little weight to genes
+with small probability of being DE.
+We have observed a similar behavior in many datasets.
+The fact that the classifier works so well with a single is typically
+not observed in real datasets, where it is rare to have a gene
+with such a high discrimination power.
+
+<<nine>>=
+pred1 <- classpred(ggfit,xnew=xsim$x[,6],x=xsim$x[,c(-6,-12)],groups,ngene=50,prgroups=c(.5,.5))
+pred2 <- classpred(ggfit,xnew=xsim$x[,12],x=xsim$x[,c(-6,-12)],groups,ngene=50,prgroups=c(.5,.5))
+pred1
+pred2
+@
+
+
+
+\bibliographystyle{plainnat}
+\bibliography{references} 
+
+\end{document}
