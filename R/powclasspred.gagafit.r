@@ -16,10 +16,10 @@ powclasspred.gagafit <- function(gg.fit,x,groups,prgroups,v0thre=1,ngene=100,B=1
 
 gapprox <- TRUE
 patterns <- gg.fit$patterns
-if (is(x, "exprSet") | is(x,"ExpressionSet")) {
+if (is(x,"ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
   x <- exprs(x)
-} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
 if (ncol(x)!=length(groups)) stop('Argument groups must have length equal to number of columns in argument x')
 par <- getpar(gg.fit)
 a0 <- as.double(par$a0); nu <- as.double(par$nu); balpha <- as.double(par$balpha)

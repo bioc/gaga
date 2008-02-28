@@ -2,7 +2,7 @@
 \alias{classpred}
 \alias{classpred.gagafit}
 %- Also NEED an '\alias' for EACH other topic documented here.
-\title{Predict the class that a new sample belongs to. }
+\title{Predict the class that a new sample belongs to.}
 \description{
   Computes the posterior probability that a new sample belongs to each
   group and classifies it into the group with highest probability.
@@ -12,16 +12,15 @@ classpred(gg.fit, xnew, x, groups, prgroups, ngene=100)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fit.gg}). }
+  \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fit.gg}).}
   \item{xnew}{Expression levels of the sample to be classified. Only the subset of the genes indicated by ngene is used.}
-  \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
+  \item{x}{\code{ExpressionSet}, data frame or matrix
     containing the gene expression measurements used to fit the model.}
-  \item{groups}{If \code{x} is of type \code{ExpressionSet} or
-    \code{exprSet}, \code{groups} should be the name of the column
-    in \code{pData(x)} with the groups that one wishes to compare. If
-    \code{x} is a matrix or a data frame, \code{groups} should be a
-    vector indicating to which group each column in x
-    corresponds to.}
+  \item{groups}{If \code{x} is of type \code{ExpressionSet},
+    \code{groups} should be the name of the column in \code{pData(x)}
+    with the groups that one wishes to compare. If \code{x} is a matrix
+    or a data frame, \code{groups} should be a vector indicating to which
+    group each column in x corresponds to.}
   \item{prgroups}{Vector specifying prior probabilities for each
     group. Defaults to equally probable groups.}
   \item{ngene}{Number of genes to use to build the classifier. Genes
@@ -45,11 +44,11 @@ classpred(gg.fit, xnew, x, groups, prgroups, ngene=100)
   \item{posgroups }{Vector giving the posterior probability that the
     \code{xnew} belongs to each of the groups.}
 }
-\references{ Rossell D. GaGa: a simple and 
+\references{Rossell D. GaGa: a simple and 
 flexible hierarchical model for microarray
-data analysis. \url{http://rosselldavid.googlepages.com}. }
-\author{ David Rossell }
-\seealso{ \code{\link{fit.gg}}, \code{\link{parest}} }
+data analysis. \url{http://rosselldavid.googlepages.com}.}
+\author{David Rossell}
+\seealso{\code{\link{fit.gg}}, \code{\link{parest}}}
 \examples{
 #Not run. Example from the help manual
 #library(gaga)
@@ -68,5 +67,5 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
 #pred1
 #pred2
 }
-\keyword{ htest }
-\keyword{ models }
+\keyword{htest}
+\keyword{models}

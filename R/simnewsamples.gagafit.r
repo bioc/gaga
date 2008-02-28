@@ -12,10 +12,10 @@ simnewsamples.gagafit <- function(gg.fit,groupsnew,sel,x,groups) {
 # - lnew: matrix of nsel rows and nsamples cols with lambda parameters from the posterior for groups given by groupsnew.
 
 gapprox <- TRUE
-if (is(x, "exprSet") | is(x,"ExpressionSet")) {
+if (is(x,"ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
   x <- exprs(x)
-} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
 
 patterns <- gg.fit$patterns
 v <- gg.fit$pp

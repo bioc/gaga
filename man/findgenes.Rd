@@ -1,7 +1,7 @@
 \name{findgenes}
 \alias{findgenes}
 \alias{findgenes.gagafit}
-\title{ Find differentially expressed genes after GaGa fit. }
+\title{Find differentially expressed genes after GaGa fit.}
 \description{
   Obtains a list of differentially expressed genes using the posterior
   probabilities from a GaGa or MiGaGa fit. For \code{parametric==TRUE} the procedure
@@ -14,14 +14,13 @@ findgenes(gg.fit, x, groups, fdrmax=.05, parametric=TRUE, B=500)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fit.gg}). }
-  \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
+  \item{x}{\code{ExpressionSet}, data frame or matrix
     containing the gene expression measurements used to fit the model.}
-  \item{groups}{If \code{x} is of type \code{ExpressionSet} or
-    \code{exprSet}, \code{groups} should be the name of the column
-    in \code{pData(x)} with the groups that one wishes to compare. If
-    \code{x} is a matrix or a data frame, \code{groups} should be a
-    vector indicating to which group each column in x
-    corresponds to.}
+  \item{groups}{If \code{x} is of type \code{ExpressionSet},
+    \code{groups} should be the name of the column in \code{pData(x)}
+    with the groups that one wishes to compare. If \code{x} is a matrix
+    or a data frame, \code{groups} should be a vector indicating to which
+    group each column in x corresponds to.}
   \item{fdrmax}{Upper bound on FDR.}.
   \item{parametric}{Set to \code{TRUE} to use the Bayes rule. Set to
     \code{FALSE} to estimate the frequentist FDR non-parametrically.}
@@ -38,22 +37,21 @@ findgenes(gg.fit, x, groups, fdrmax=.05, parametric=TRUE, B=500)
 \value{
 List with components:
   \item{efp }{Expected number of true positives.}
-  \item{d }{Vector indicating the pattern that each gene is assigned
-to.}
+  \item{d }{Vector indicating the pattern that each gene is assigned to.}
   \item{fdr }{Frequentist estimated FDR that is closest to fdrmax.}
   \item{fdrpar}{Bayesian FDR. If \code{parametric==TRUE}, this is equal to \code{fdrmax}. If \code{parametric==FALSE}, it's the Bayesian FDR needed to achieve frequentist estimated FDR=\code{fdrmax}.}
-  \item{fdrest}{Data frame with estimated frequentist FDR for each target Bayesian FDR}
-  \item{fnr}{Bayesian FNR}
+  \item{fdrest}{Data frame with estimated frequentist FDR for each target Bayesian FDR.}
+  \item{fnr}{Bayesian FNR.}
   \item{power}{Bayesian power as estimated by expected number of true
     positives divided by the expected number of differentially expressed
-  genes}
-  \item{threshold}{Optimal threshold for posterior probability of equal expression (genes with probability < \code{threshold} are declared DE)}
+  genes.}
+  \item{threshold}{Optimal threshold for posterior probability of equal expression (genes with probability < \code{threshold} are declared DE).}
 }
-\references{ Rossell D. GaGa: a simple and 
+\references{Rossell D. GaGa: a simple and 
 flexible hierarchical model for microarray
-data analysis. \url{http://rosselldavid.googlepages.com}. }
-\author{ David Rossell }
-\seealso{ \code{\link{fit.gg}}, \code{\link{parest}} }
+data analysis. \url{http://rosselldavid.googlepages.com}.}
+\author{David Rossell}
+\seealso{\code{\link{fit.gg}}, \code{\link{parest}}}
 \examples{
 #Not run. Example from the help manual
 #library(gaga)
@@ -73,5 +71,5 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
-\keyword{ htest }
-\keyword{ models }
+\keyword{htest}
+\keyword{models}

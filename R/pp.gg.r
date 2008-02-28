@@ -1,7 +1,7 @@
 pp.gg <- function(x,groups,a0,nu,balpha,nualpha,probclus,probpat,patterns) {
 # Computes posterior probabilities of DE from Gamma/Gamma model given data x and hyper-param estimate
 # Input:
-# - x:  matrix or exprSet with gene expression measurements for all groups
+# - x:  matrix or ExpressionSet with gene expression measurements for all groups
 # - groups: vector of length ncol(x) indicating what group does each column in x correspond to
 # - a0: alpha0. Shape parameter for the prior distribution (must be >0)
 # - nu: nu. Scale parameter for the prior distribution (must be >0)
@@ -18,10 +18,10 @@ pp.gg <- function(x,groups,a0,nu,balpha,nualpha,probclus,probpat,patterns) {
 #   and allows for the hyper-parameters to have been estimated with data other than x
 
 gapprox <- TRUE
-if (is(x, "exprSet") | is(x,"ExpressionSet")) {
+if (is(x,"ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
   x <- exprs(x)
-} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
 groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
 if (missing(a0)) stop('a0 must be specified')

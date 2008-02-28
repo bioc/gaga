@@ -1,7 +1,7 @@
 findgenes.gagafit <- function(gg.fit,x,groups,fdrmax=.05,parametric=TRUE,B=500) {
 # Computes optimal terminal decision rules and expected terminal utility for several utility functions
 # Input:
-# - x: matrix or exprSet gene expression data
+# - x: matrix or ExpressionSet gene expression data
 # - groups: vector indicating to which group does each column of x belong to
 # - gg.fit: GaGa or MiGaGa fit, as returned by parest.gagafit
 # - fdrmax: restriction on E(FDR). Ignored if util!='fnrstfdr'.
@@ -25,10 +25,10 @@ centers <- 1; v <- gg.fit$pp
 if (!is.matrix(v)) stop('gg.fit$pp must be a matrix containing posterior probabilities of each expression pattern')
 cf <- as.double(2)
 
-if (is(x, "exprSet") | is(x,"ExpressionSet")) {
+if (is(x,"ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
   x <- exprs(x)
-} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
 
 groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
 if (length(groups) != ncol(x)) stop('groups must have length equal to the number of columns in x')

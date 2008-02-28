@@ -17,10 +17,10 @@ fit.gg <- function(x,groups,patterns,nclust=1,method='Bayes',B=1000,priorpar,par
 # - patterns: same as input argument
 
 gapprox <- TRUE
-if (is(x, "exprSet") | is(x, "ExpressionSet")) {
+if (is(x, "ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
-} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, exprSet, data.frame or matrix") }
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
 groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
 if (missing(patterns)) patterns <- rbind(rep(0,K),0:(K-1))

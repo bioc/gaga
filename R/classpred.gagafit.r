@@ -15,10 +15,10 @@ gapprox <- TRUE
 sel <- (1:nrow(x))[order(gg.fit$pp[,1])][1:ngene]
 if (!is.vector(xnew)) stop('xnew must be a vector')
 if (!is.numeric(sel)) stop('sel must contain numerical indexes')
-if (is(x, "exprSet") | is(x,"ExpressionSet")) {
+if (is(x,"ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
   x <- exprs(x)
-} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
 if (ncol(x)!=length(groups)) stop('Argument groups must have length equal to number of columns in argument x')
 par <- getpar(gg.fit)
 a0 <- as.double(par$a0); nu <- as.double(par$nu); balpha <- as.double(par$balpha)
