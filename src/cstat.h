@@ -2,7 +2,7 @@
  Basic statistical, input-output and matrix manipulation
 
  Authors. Peter Mueller, Stephen Morris, David Rossell
- Last modified. 04 2007
+ Last modified. 12 2007
 ***********************************************************/
 
 #if !defined(STAT_H_INCLUDED)
@@ -17,6 +17,10 @@
 
 #if !defined(M_PI_2)
 #define M_PI_2 (1.570796326794896619231321691640)
+#endif
+
+#if !defined(LOG_M_2PI)
+#define LOG_M_2PI (1.8378770664093453)
 #endif
 
 #if !defined(SQ_M_PI_2)
@@ -36,6 +40,20 @@ double vari(int *x, int lim, int unb);
 double wvari(int *x, int lim, double *w);
 double varx(double *x, int lim, int unb);
 double wvarx(double *x, int lim, double *w);
+
+
+/************************************************************************
+                         BASIC BAYESIAN MODELS
+************************************************************************/
+
+void nn_bayes(double *mpo, double **Spo, double **Spo_inv, int p, double r1, double *mpr, double **Spr_inv, double r2, double *y, double **Slik_inv);  //Posterior of multiv normal mean with normal prior
+void nn_bayes_rand(double *theta, int p, double r1, double **Spr_inv, double *mpr, double r2, double **Slik_inv, double *y); //Single draw from posterior of multiv normal mean with normal prior
+double nn_integral(double *x, double *rx, double **Vxinv, double *detVx, double *mpr, double *rpr, double **Vprinv, double *detVpr, int *p, int *logscale); //Normal-Normal integral (useful to compute Bayes factors etc.)
+
+void lm (double *b, double **XtX, double **invXtX, double *Xty, double *s, double *ypred, double *y, double **X, int *n, int *p, int *useXtX); //classical multiple linear regression
+void lmbayes (double *bpost, double *spost, double *b, double **Vb, double *a_s, double *b_s, double **XtX, double **invXtX, double *Xty, int *B, double *y, double **X, int *n, int *p, int *useXtX, double *mpr, double **Spr_inv, double *tauprior, double *nu0, double *s0); //Bayesian multiple linear regression
+void lmbayes_knownvar (double *bpost, double *b, double **Vb, double **XtX, double **invXtX, double *Xty, double *sigma, int *B, double *y, double **X, int *n, int *p, int *useXtX, double *mpr, double **Spr_inv, double *tauprior); //same as lmbayes with known variance sigma^2
+
 
 /**************************************************************/
 /* Input/output functions (interface)                         */
@@ -84,7 +102,7 @@ void fserror(char *proc, char *act, char *what);
 /* Debug messages etc. (mess)                                 */
 /**************************************************************/
 
-void error(char *,char *, int);
+void errorC(char *,char *, int);
 void err_msg(char *fct, char *txt, int n1, int n2, int n3);
 
 /**************************************************************/
@@ -124,10 +142,17 @@ double betacf(double a, double b, double x); //continued fraction for incomplete
 /**************************************************************/
 
 void grid (double x0, double xn, int n, double *x);
-void rA(double,double **, double **, int, int);  //Multiply matrix by scalar
+void rA(double r,double **A, double **B, int rowini, int rowfi, int colini, int colfi);  //matrix*scalar
+void A_plus_B(double **A, double **B, double **C, int rowini, int rowfi, int colini, int colfi); //matrix + matrix
+void rA_plus_sB(double r,double **A,double s,double **B,double **C,int rowini,int rowfi,int colini,int colfi); //matrix*scalar + matrix*scalar
+void rAx_plus_sBy(double r, double **A, double *x, double s, double **B, double *y, double *z, int rowini, int rowfi, int colini, int colfi); //scalar*matrix*vector + scalar*matrix*vector
 void Ax_plus_y(double **A, double *x, double *y, double *z, int ini, int fi); //matrix*vector+vector
 void xA(double *x,double **A,double *z, int ini, int fi);  //Multiply vector * matrix
-void Ax(double **A,double *x,double *z, int ini, int fi);  //Multiply matrix * vector
+void Ax(double **A,double *x,double *z,int rowini,int rowfi,int colini,int colfi);  //matrix * vector
+double xtAy(double *x, double **A, double *y, int ini, int fi); //t(vector)*matrix*vector
+double quadratic_xtAx(double *x, double **A, int ini, int fi); //t(vector)*matrix*vector for quadratic forms (A symmetric)
+void Atx(double **A,double *x,double *z,int rowini,int rowfi,int colini,int colfi); //t(matrix)*vector
+void AtB(double **A, int rowiniA, int rowfiA, int coliniA, int colfiA, double **B, int rowiniB, int rowfiB, int coliniB, int colfiB, double **C); //t(matrix)*matrix, stored in C
 void a_plus_b(double *a, double *b, double *c, int ini, int fi); //Vector sum i.e. c[i]=a[i]+b[i]
 void a_prod_b(double *a, double *b, double *c, int ini, int fi); //Vector prod i.e. c[i]=a[i]*b[i]
 void R_zero(double **, int, int);
@@ -136,11 +161,15 @@ int imax_xy(int x, int y);
 int imin_xy(int x, int y);
 double max_xy(double x, double y);
 double min_xy(double x, double y);
+void minvec(double *x, int ini, int fi, double *xmin, int *minpos); //min of a vector and position at which min occurs
+void maxvec(double *x, int ini, int fi, double *xmax, int *maxpos); //max of a vector and position at which max occurs
 
 void choldc(double **a, int n, double **aout);   //Cholesky decomposition
 void choldc_inv(double **a, int n, double **aout); //Inverse of Cholesky decomposition
 double choldc_det(double **chols, int n); //Determinant of a symmetric def+ using its Cholesky decomp
 void inv_posdef(double **a, int n, double **aout); //Inverse of a positive definite matrix
+void invdet_posdef(double **a, int n, double **aout, double *det_a); //Inverse and determinant of positive def matrix
+void inv_posdef_chol(double **invchol, int n, double **aout); //Inverse given cholesky decomposition
 
 void ludc(double **a, int n, int *indx, double *d); //LU decomposition (renamed routine ludcmp from NR)
 void lu_solve(double **a, int n, int *indx, double b[]); //Solve A*x=b (renamed routine lubksb from NR)
@@ -164,37 +193,47 @@ void sampled_wr(double *x, int popsize, int n); //same for vector of doubles
 /* Random variate generation (rand)                           */
 /**************************************************************/
 
-//Several
+// Several
 void setseed(long, long);
-double  runif();
-int runifdisc(int min, int max);
 int rdisc(double *probs, int nvals);
-double rbeta(double , double );
-double pbeta(double x, double pin, double qin); //quantile from a Beta(pin,qin)
-void rdirichlet(double *w, double *alpha, int *p);
 double gamdev(double );
 int	binomial(int , double );
 void multinomial(int, int, double *, int *);
 
+// Uniform
+double runif();
+double dunifC(double x, double a, double b);
+int runifdisc(int min, int max);
+
+// Beta-Dirichlet
+double rbetaC(double , double );
+double pbetaC(double x, double pin, double qin); //quantile from a Beta(pin,qin)
+void rdirichlet(double *w, double *alpha, int *p);
+
 // Normal
-double dnorm(double y, double m, double s, int logscale); //density of Normal(m,s^2)
-double dmvnorm(double *y, int n, double *mu, double **cholsinv, double det, int logscale); //density of multivariate Normal
-double	qnorm (double cdf, double m, double s);  //quantile from Normal(m,s^2)
-double	pnorm(double y, double m, double s);  //cdf of Normal(m,s^2)
-double rnorm(double mu, double s); //draw from univariate Normal(mu,s^2)
+double dnormC(double y, double m, double s, int logscale); //density of Normal(m,s^2)
+double dmvnormC(double *y, int n, double *mu, double **cholsinv, double det, int logscale); //density of multivariate Normal
+double	qnormC(double cdf, double m, double s);  //quantile from Normal(m,s^2)
+double	pnormC(double y, double m, double s);  //cdf of Normal(m,s^2)
+double rnormC(double mu, double s); //draw from univariate Normal(mu,s^2)
 double rnorm_trunc(double ltrunc, double rtrunc, double m, double s); //draw trunc Normal given trunc points
 double rnorm_trunc_prob(double lprob, double rprob, double m, double s); //draw trunc Normal given trunc probs
-void rmvnorm(double *y, int n, double *mu, double **chols); //draw from multivariate Normal
+void rmvnormC(double *y, int n, double *mu, double **chols); //draw from multivariate Normal
 
 // T Student
-double dt(double y, double mu, double s, int nu); //density of t with nu df
-double dmvt(double *y, int n, double *mu, double **cholsinv, double det, int nu, int logscale); //density of multivariate t
-double rt(int nu); //draw from univariate t with nu degrees of freedom
+double dtC(double y, double mu, double s, int nu); //density of t with nu df
+double dmvtC(double *y, int n, double *mu, double **cholsinv, double det, int nu, int logscale); //density of multivariate t
+double rtC(int nu); //draw from univariate t with nu degrees of freedom
 double rt_trunc(int nu, double ltrunc, double rtrunc); //draw from truncated t given trunc points
 double rt_trunc_prob(int nu, double lprob, double rprob);  //draw from truncated t given trunc probs
-double qt(double p, int nu);  //quantile from t-Student with nu degrees of freedom
-double pt(double x, int nu);  //CDF of t-Student with nu degrees of freedom
-void rmvt(double *y, int n, double *mu, double **chols, int nu); //draw from multivar T with nu degrees of freedom
+double qtC(double p, int nu);  //quantile from t-Student with nu degrees of freedom
+double ptC(double x, int nu);  //CDF of t-Student with nu degrees of freedom
+void rmvtC(double *y, int n, double *mu, double **chols, int nu); //draw from multivar T with nu degrees of freedom
+
+// Gamma & Inverse gamma
+double rgammaC(double a, double b); //a: shape; b: location; mean=a/b
+double dgammaC(double x, double a, double b); //a: shape; b: location; mean=a/b
+
 
 /* More random variate stuff (dcdflib, from CMU statlib "www.stat.cmu.edu") */
 double fifdint(double);
@@ -233,10 +272,15 @@ double midinf(double (*funk)(double), double aa, double bb, int n); //nth stage 
 double qromo(double (*func)(double), double a, double b, double (*choose)(double(*)(double), double, double, int)); //Romberg integr on open interval (a,b)
 
 /**************************************************************/
-/* Interpolation and extrapolation                            */
+/* Interpolation, extrapolation and splines                   */
 /**************************************************************/
 
 void polint (double xa[], double ya[], int n, double x, double *y, double *dy); //interpolates via polynomials
+double bspline_singlex(double x, int j, int degree, double *knots); //jth B-spline basis eval at single value x
+void bspline(double **W, double *x, int *nx, int *degree, double *knots, int *nknots); //B-spline basis eval at vector of values x
+void bspline_vec(double *W, double *x, int *nx, int *degree, double *knots, int *nknots); //same as bspline but returns a vector, so that it can be called from R
+void mspline(double **W, double *x, int *nx, int *degree, double *knots, int *nknots); //M-spline basis eval at vector of values x
+void mspline_vec(double *W, double *x, int *nx, int *degree, double *knots, int *nknots); //same as mspline but returns a vector, so that it can be called from R
 
 
 /**************************************************************/

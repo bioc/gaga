@@ -22,7 +22,7 @@ nclust <- gg.fit$nclust
 if (gg.fit$method=='EBayes') {
   a0 <- gg.fit$parest[1]; nu <- gg.fit$parest[2]
   balpha <- gg.fit$parest[3]; nualpha <- gg.fit$parest[4]
-  probclus <- 1; probpat <- gg.fit$parest[6:7]
+  probclus <- 1; probpat <- gg.fit$parest[-1:-5]
   ci<-list(a0=NA,nu=NA,balpha=NA,nualpha=NA,probclus=NA,probpat=NA)
   pp <- pp.gg(x,groups,a0=a0,nu=nu,balpha=balpha,nualpha=nualpha,probclus=probclus,probpat=probpat,patterns=gg.fit$patterns)
   dic <- NA

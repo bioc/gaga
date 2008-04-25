@@ -1,5 +1,5 @@
 /***********************************************************
- Basic statistical, input-output and matrix manipulation
+ Basic, input-output and matrix manipulation
 
  Authors. Peter Mueller, Stephen Morris, David Rossell
           (some routines obtained from other sources)
@@ -52,7 +52,7 @@ double wmeani(int *x, int lim, double *w)
     return value;
 }
 
-/* Sample mean of elements 0 through lim of vector x */
+/* Sample mean of elements 0 through lim (both included) of vector x */
 double meanx(double *x, int lim) 
 {
     int i;
@@ -125,6 +125,249 @@ double wvarx(double *x, int lim, double *w)
     for(i=0,value=0,wtot=0; i<=lim; i++) { value += w[i]*pow(x[i],2); wtot += w[i]; }
     value = value/wtot - pow(wmeanx(x,lim,w),2);
     return value;
+}
+
+/************************************************************************
+                         BASIC BAYESIAN MODELS
+************************************************************************/
+
+/********************************************
+ *         normal_normal
+ ********************************************/
+void nn_bayes(double *mpo, double **Spo, double **Spo_inv, int p, double r1, double *mpr, double **Spr_inv, double r2, double *y, double **Slik_inv)
+/* prior: N(x; mpr, r1*Spr)
+   likl:  N(y; x, r2*Slik)
+   p: dimensionality
+   returns:  post N(x; mpo,Spo)
+   Spo = (1/r1*Spr_inv + 1/r2*Slik_inv)^-1
+   mpo = Spo*(1/r1*Spr*mpr + 1/r2*Slik*y)
+   NOTE: input vectors and matrices must start at position 1, not 0
+*/
+{ double *z;
+
+  z = dvector(1,p);
+
+  rA_plus_sB(1.0/r1, Spr_inv, 1.0/r2, Slik_inv, Spo_inv,1,p,1,p);
+  inv_posdef(Spo_inv,p,Spo); 
+  rAx_plus_sBy(1.0/r1, Spr_inv, mpr, 1.0/r2, Slik_inv, y, z,1,p,1,p);
+  Ax(Spo,z,mpo,1,p,1,p);
+  
+  free_dvector(z,1,p);
+}
+
+void nn_bayes_rand(double *theta, int p, double r1, double **Spr_inv, double *mpr, double r2, double **Slik_inv, double *y) {
+/* same as nn_bayes, but returns a draw only 
+   returns:
+   theta: draw from the posterior N(theta; mpo, Spo):
+*/
+  double *z, **S, **S_inv, *m, **cholS;
+
+  /* allocate memory */
+  z = dvector(0,p-1);
+  m = dvector(0,p-1);
+  S = dmatrix(0,p-1,0,p-1);
+  S_inv = dmatrix(0,p-1,0,p-1);
+  cholS= dmatrix(0,p-1,0,p-1);
+
+  rA_plus_sB(1.0/r1, Spr_inv, 1.0/r2, Slik_inv, S_inv,1,p,1,p);
+  inv_posdef(S_inv,p,S);
+  rAx_plus_sBy(1.0/r1, Spr_inv, mpr, 1.0/r2, Slik_inv, y, z,1,p,1,p);
+  Ax(S,z,m,1,p,1,p);
+
+  choldc(S,p,cholS);
+  rmvnormC(theta,p,m,cholS);
+
+  free_dvector(z,0,p-1);
+  free_dvector(m,0,p-1);
+  free_dmatrix(S,0,p-1,0,p-1);
+  free_dmatrix(S_inv,0,p-1,0,p-1);
+  free_dmatrix(cholS,0,p-1,0,p-1);
+
+}
+
+double nn_integral(double *x, double *rx, double **Vxinv, double *detVx, double *mpr, double *rpr, double **Vprinv, double *detVpr, int *p, int *logscale) {
+  // Compute normal-normal integral
+  //   N(x;beta,rx*Vx) * N(beta;mpr,rpr*Vpr) with respect to beta
+  //
+  // - Vxinv, detVx: inverse and determinant of Vx
+  // - Vprinv, detVpr: inverse and determinant of Vpr
+  // - p: dimensionality
+  // - logscale: if not 0, result is returned in log scale
+
+  double ans, detx, detpr, detsum, **Vsum, **Vsuminv, **cholVsum, *m;
+
+  m= dvector(1,*p);
+  Vsum= dmatrix(1,*p,1,*p); Vsuminv= dmatrix(1,*p,1,*p); cholVsum= dmatrix(1,*p,1,*p);
+
+  rA_plus_sB(1.0/(*rx),Vxinv,1.0/(*rpr),Vprinv,Vsuminv,1,*p,1,*p);
+  choldc_inv(Vsuminv,*p,cholVsum);
+  detsum= choldc_det(cholVsum,*p);
+  inv_posdef_chol(cholVsum,*p,Vsum);
+  rAx_plus_sBy(1.0/(*rx),Vxinv,x,1.0/(*rpr),Vprinv,mpr,m,1,*p,1,*p);
+  ans= xtAy(m,Vsum,m,1,*p) - xtAy(x,Vxinv,x,1,*p) - xtAy(mpr,Vprinv,mpr,1,*p);
+
+  ans= .5*ans - 0.5*((*p+.0)*LOG_M_2PI + log(*detVx) + log(*detVpr) - log(detsum));
+  if (*logscale != 0) ans= exp(ans);
+
+  free_dvector(m,1,*p); 
+  free_dmatrix(Vsum,1,*p,1,*p); free_dmatrix(Vsuminv,1,*p,1,*p); free_dmatrix(cholVsum,1,*p,1,*p);
+
+  return(ans);
+}
+
+
+void lm (double *b, double **XtX, double **invXtX, double *Xty, double *s, double *ypred, double *y, double **X, int *n, int *p, int *useXtX) {
+ //Fits classical multiple linear regression
+ /* Input
+      - y: response variable y[1..n]
+      - X: design matrix X[1..n][1..p]
+      - n: number of observations
+      - p: number of covariates
+      - useXtX: if set to 0 the inverse of X'X is computed, otherwise the supplied value is used
+    Ouput
+      - b: least-squares estimate for regression coefficients
+      - XtX, invXtX: X'X and its inverse (if useXtX==0 they're ouput param, otherwise they're input)
+      - Xty: vector X'y (if useXtX==0 it's an output param, otherwise it's input)
+      - s: residual variance (dividing by n-p)
+      - ypred: predicted values i.e. X'b
+ */
+  int i;
+
+  if (*n<*p) errorC("lm","Linear model with more variables than observations",0);
+
+  if (*useXtX==0) {
+    AtB(X,1,*n,1,*p,X,1,*n,1,*p,XtX);
+    inv_posdef(XtX,*p,invXtX);
+    Atx(X,y,Xty,1,*n,1,*p); //X'y
+  }
+
+  Ax(invXtX,Xty,b,1,*p,1,*p); //least squares estimate
+  Ax(X,b,ypred,1,*n,1,*p); //predicted values
+
+  for (*s= 0, i=1; i<=(*n); i++) { (*s) += (y[i]-ypred[i])*(y[i]-ypred[i]); }
+  (*s)= (*s)/(*n- *p);
+
+}
+
+void lmbayes (double *bpost, double *spost, double *b, double **Vb, double *a_s, double *b_s, double **XtX, double **invXtX, double *Xty, int *B, double *y, double **X, int *n, int *p, int *useXtX, double *mpr, double **Spr_inv, double *tauprior, double *nu0, double *s0) {
+ //Bayesian conjugate multiple linear regression
+   // y ~ N(X'beta,sigma^2)
+   // beta ~ N(mpr,sigma^2*Spr) (if tauprior<=0)
+   // beta ~ N(mpr,tauprior*sigma^2*(X'X)^{-1}) (if tauprior>0) 
+   //        e.g. tauprior==n gives unit information prior
+   // sigma^2 ~ IG(.5*nu0,.5*s0)  (nu0: prior sample size; s0: prior sum of squares)
+ /* Input
+      - B: number of posterior samples to draw (can be 0)
+      - y: response variable y[1..n]
+      - X: design matrix X[1..n][1..p]
+      - n: number of observations
+      - p: number of covariates
+      - useXtX: if set to 0 the inverse of X'X is computed, otherwise the supplied value is used
+      - mpr, Spr_inv, tauprior: prior parameters for beta
+      - nu0, s0: prior for sigma^2 is IG(.5*nu0,.5*s0)
+    Ouput
+      - bpost: matrix (B rows, p cols) with samples from the posterior of beta. Starts at bpost[1].
+      - spost: vector (B rows) with samples from the posterior of sigma^2. Starts at spost[1].
+      - b, Vb: posterior for regression coef is N(b,sigma^2*Vb)
+      - a_s, b_s: posterior for sigma^2 is IG(a_s,b_s)
+      - XtX, invXtX: X'X and its inverse (if useXtX==0 they're ouput param, otherwise they're input)
+      - Xty: vector X'y (if useXtX==0 it's an output param, otherwise it's input)
+ */
+  int i, j, one=1;
+  double *b_ls, s_ls, *ypred, **Vb_inv, *zeroes, **cholVb;
+
+  if (*useXtX==0) {
+    AtB(X,1,*n,1,*p,X,1,*n,1,*p,XtX);
+    inv_posdef(XtX,*p,invXtX);
+    Atx(X,y,Xty,1,*n,1,*p); //X'y
+  }
+
+  b_ls= dvector(1,*p); ypred= dvector(1,*n);
+  lm(b_ls,XtX,invXtX,Xty,&s_ls,ypred,y,X,n,p,&one);  //least-squares fit
+
+  *a_s= .5*(*nu0 + *n); *b_s= .5*(*s0 + (*n- *p)*s_ls); //posterior for sigma^2
+
+  Vb_inv= dmatrix(1,*p,1,*p);   //posterior for beta
+  if (*tauprior > 0) {
+    nn_bayes(b,Vb,Vb_inv,*p,*tauprior,mpr,XtX,1.0,b_ls,XtX);
+  } else {
+    nn_bayes(b,Vb,Vb_inv,*p,1.0,mpr,Spr_inv,1.0,b_ls,XtX);
+  }
+
+  if (*B>0) {             //posterior samples
+    cholVb= dmatrix(1,*p,1,*p);
+    choldc(Vb,*p,cholVb); //cholesky decomp of posterior covar for beta
+    zeroes= dvector(1,*p);
+    for (i=1; i<=(*p); i++) { zeroes[i]= 0; }
+    for (i=1; i<=(*B); i++) {
+      spost[i]= 1.0/rgammaC(*a_s,*b_s);
+      rmvnormC(bpost+(i-1)*(*p),*p,zeroes,cholVb);
+      for (j=1; j<=(*p); j++) { bpost[(i-1)*(*p)+j]= bpost[(i-1)*(*p)+j]*sqrt(spost[i])+b[j]; }
+    }
+    free_dvector(zeroes,1,*p);
+    free_dmatrix(cholVb,1,*p,1,*p);
+  }
+
+  free_dvector(b_ls,1,*p); free_dvector(ypred,1,*n); free_dmatrix(Vb_inv,1,*p,1,*p);
+
+}
+
+
+void lmbayes_knownvar (double *bpost, double *b, double **Vb, double **XtX, double **invXtX, double *Xty, double *sigma, int *B, double *y, double **X, int *n, int *p, int *useXtX, double *mpr, double **Spr_inv, double *tauprior) {
+ //Bayesian conjugate multiple linear regression with known var
+   // y ~ N(X'beta,sigma^2)
+   // beta ~ N(mpr,sigma^2*Spr) (if tauprior<=0)
+   // beta ~ N(mpr,tauprior*sigma^2*(X'X)^{-1}) (if tauprior>0) 
+   //        e.g. tauprior==n gives unit information prior
+ /* Input
+      - sigma: residual standard deviation 
+      - B: number of posterior samples to draw (can be 0)
+      - y: response variable y[1..n]
+      - X: design matrix X[1..n][1..p]
+      - n: number of observations
+      - p: number of covariates
+      - useXtX: if set to 0 the inverse of X'X is computed, otherwise the supplied value is used
+      - mpr, Spr_inv, tauprior: prior parameters for beta
+    Ouput
+      - bpost: matrix (B rows, p cols) with samples from the posterior of beta. Starts at bpost[1].
+      - b, Vb: posterior for regression coef is N(b,sigma^2*Vb)
+      - XtX, invXtX: X'X and its inverse (if useXtX==0 they're ouput param, otherwise they're input)
+      - Xty: vector X'y (if useXtX==0 it's an output param, otherwise it's input)
+ */
+  int i, j, one=1;
+  double *b_ls, s_ls, *ypred, **Vb_inv, *zeroes, **cholVb;
+
+  if (*useXtX==0) {
+    AtB(X,1,*n,1,*p,X,1,*n,1,*p,XtX);
+    inv_posdef(XtX,*p,invXtX);
+    Atx(X,y,Xty,1,*n,1,*p); //X'y
+  }
+
+  b_ls= dvector(1,*p); ypred= dvector(1,*n);
+  lm(b_ls,XtX,invXtX,Xty,&s_ls,ypred,y,X,n,p,&one);  //least-squares fit
+
+  Vb_inv= dmatrix(1,*p,1,*p);   //posterior for beta
+  if (*tauprior > 0) {
+    nn_bayes(b,Vb,Vb_inv,*p,*tauprior,mpr,XtX,1.0,b_ls,XtX);
+  } else {
+    nn_bayes(b,Vb,Vb_inv,*p,1.0,mpr,Spr_inv,1.0,b_ls,XtX);
+  }
+
+  if (*B>0) {             //posterior samples
+    cholVb= dmatrix(1,*p,1,*p);
+    choldc(Vb,*p,cholVb); //cholesky decomp of posterior covar for beta
+    zeroes= dvector(1,*p);
+    for (i=1; i<=(*p); i++) { zeroes[i]= 0; }
+    for (i=1; i<=(*B); i++) {
+      rmvnormC(bpost+(i-1)*(*p),*p,zeroes,cholVb);
+      for (j=1; j<=(*p); j++) { bpost[(i-1)*(*p)+j]= bpost[(i-1)*(*p)+j]*(*sigma)+b[j]; }
+    }
+    free_dvector(zeroes,1,*p);
+    free_dmatrix(cholVb,1,*p,1,*p);
+  }
+
+  free_dvector(b_ls,1,*p); free_dvector(ypred,1,*n); free_dmatrix(Vb_inv,1,*p,1,*p);
+
 }
 
 
@@ -506,7 +749,7 @@ void fserror(char *proc, char *act, char *what){
                                       DEBUG MESSAGES ETC.
 ******************************************************************************************/
 
-void error(char *module, char *mess, int nr)              
+void errorC(char *module, char *mess, int nr)              
 {
    	printf("\n *** ERROR # %d in %s***\n %s",nr,module, mess);
 	printf(  " exiting program \n");
@@ -723,7 +966,7 @@ double digamma(double x) {
   double lower= 1.0e-8, upper= 19.5, euler_one= .422784335098467139393488, ans, x_inv, x_pow;
 
 
-  if (x<=0) error("digamma",  "digamma must be given a positive argument", 1);;
+  if (x<=0) errorC("digamma",  "digamma must be given a positive argument", 1);;
 
   if (x<lower) {
     ans = -1.0 / x - 1.0/(1.0+x) + euler_one;
@@ -812,7 +1055,7 @@ double lnbeta(double a, double b) {
 
 
 double betacf(double a, double b, double x) {
-//Used by pbeta: Evaluates continued fraction for incomplete beta function by modified Lentz's
+//Used by pbetaC: Evaluates continued fraction for incomplete beta function by modified Lentz's
 //method (x5.2).
   int m,m2, MAXIT=100;
   double aa,c,d,del,h,qab,qam,qap, EPS=3.0e-7, FPMIN=1.0e-30;
@@ -862,21 +1105,44 @@ void grid (double x0, double xn, int n, double *x)
     x[i]=xi; 
 } 
 
-void rA(double r,double **A, double **B, int p, int q) {
+void rA(double r,double **A, double **B, int rowini, int rowfi, int colini, int colfi) {
   //Multiply matrix A[1..p][1..q] by scalar r, store results in matrix B
   int _i, _j;
-  for(_i=0; _i<(p); _i++){			 
-    for(_j=0; _j<(q); _j++)			 
+  for(_i=rowini; _i<=(rowfi); _i++){			 
+    for(_j=colini; _j<=(colfi); _j++)			 
       B[_i][_j] = r* A[_i][_j];	 
   } 
+} 
+
+void A_plus_B(double **A, double **B, double **C, int rowini, int rowfi, int colini, int colfi) {
+ //Sum matrix A[rowini..rowfi][colini..colfi] + B[rowini..rowfi][colini..colfi], store results in C
+  int _i, _j;
+  for (_i=rowini; _i<=rowfi; _i++) { for (_j=colini; _j<=colfi; _j++) { C[_i][_j]= A[_i][_j] + B[_i][_j]; } }
+}
+
+
+void  rA_plus_sB(double r, double **A, double s, double **B, double **C, int rowini, int rowfi, int colini, int colfi) {
+  //Multiply scalar r times matrix A, add scalar s times matrix B, store results in C
+  int _i, _j;
+  for(_i=rowini;_i<=(rowfi);_i++)  
+    for(_j=colini;_j<=(colfi);_j++)			 
+      C[_i][_j]= r*A[_i][_j]+s*B[_i][_j];  
+} 
+
+void rAx_plus_sBy(double r, double **A, double *x, double s, double **B, double *y, double *z, int rowini, int rowfi, int colini, int colfi) {
+  //Scalar*matrix*vector + scalar*matrix*vector
+  int _i, _j; 
+  for(_i=rowini;_i<=rowfi;_i++) 
+    for(z[_i]=0,_j=colini; _j<=rowfi; _j++) 
+      z[_i] += r*A[_i][_j]*x[_j] + s*B[_i][_j]*y[_j]; 
 } 
 
 void Ax_plus_y(double **A, double *x, double *y, double *z, int ini, int fi) { 
   //Multiply matrix A[ini..fi][ini..fi] by vector x[ini..fi] and add vector y[ini..fi]
   //Store result in vector z
   int _i,_j;
-  for(_i=ini;_i<fi;_i++) 
-    for(z[_i]=y[_i],_j=ini; _j<fi; _j++) 
+  for(_i=ini;_i<=fi;_i++) 
+    for(z[_i]=y[_i],_j=ini; _j<=fi; _j++) 
       z[_i] += A[_i][_j]*x[_j]; 
 } 
 
@@ -888,12 +1154,51 @@ void xA(double *x,double **A,double *z, int ini, int fi) {
   } 
 }
  
-void Ax(double **A,double *x,double *z, int ini, int fi) { 
+void Ax(double **A,double *x,double *z, int rowini, int rowfi, int colini, int colfi) { 
   int _i, _j;
-  for(_i=ini;_i<=(fi);_i++){				 
-    for(z[_i]=0,_j=ini; _j<=(fi); _j++)		 
+  for(_i=rowini;_i<=rowfi;_i++){				 
+    for(z[_i]=0,_j=colini; _j<=colfi; _j++)		 
       z[_i]+=A[_i][_j]*x[_j];	 
   } 
+} 
+
+double xtAy (double *x, double **A, double *y, int ini, int fi) { 
+  int _i, _j; double z; 
+  for(z=0,_i=ini;_i<=fi;_i++) 
+    for(_j=ini; _j<=fi; _j++) 
+      z += A[_i][_j]*x[_j]*y[_i]; 
+  return(z); 
+}
+ 
+double quadratic_xtAx(double *x, double **A, int ini, int fi) {
+ //t(vector)*matrix*vector for quadratic forms (A must be symmetric)
+ //Note: this routine is faster than xtAy for symmetric A (saves 25%-50% operations)
+  int _i, _j; double z;
+  for (z=0,_i=ini; _i<=fi; _i++) {
+    z+= A[_i][_i]*x[_i]*x[_i];
+    for (_j=_i+1; _j<=fi; _j++) {
+      z+= 2*A[_i][_j]*x[_i]*x[_j];
+    }
+  }
+  return(z);
+}
+
+
+void Atx(double **A,double *x,double *z, int rowini, int rowfi, int colini, int colfi) {
+  int _i, _j; 
+  for(_i=colini;_i<=colfi;_i++){				 
+    for(z[_i]=0,_j=rowini; _j<=rowfi; _j++)		 
+      z[_i]+=A[_j][_i]*x[_j];	 
+  } 
+} 
+
+void AtB(double **A, int rowiniA, int rowfiA, int coliniA, int colfiA, double **B, int rowiniB, int rowfiB, int coliniB, int colfiB, double **C) { 
+  int _i, _j, _k;
+  if ((rowfiA-rowiniA) != (rowfiB-rowiniB)) errorC("AtB","dimensions don't match",1); 
+  for(_i=coliniA;_i<=colfiA;_i++)			 
+    for(_j=coliniB;_j<=colfiB;_j++)			 
+      for(C[_i][_j]=0,_k=rowiniA;_k<=rowfiA;_k++)	 
+	C[_i][_j]+=A[_k][_i]*B[_k][_j]; 
 } 
 
 void a_plus_b(double *a, double *b, double *c, int ini, int fi) {
@@ -938,6 +1243,22 @@ double min_xy(double x, double y)
   return (x<y) ? x : y; 
 } 
 
+
+void minvec(double *x, int ini, int fi, double *xmin, int *minpos) {
+//Minimum of vector x[ini..fi] is returned in xmin. Position at which min occurs is returned in minpos
+  int _i;
+  *xmin= x[ini]; *minpos= ini;
+  for (_i=ini+1;_i<=fi;_i++) { if (x[_i]<(*xmin)) { *xmin= x[_i]; *minpos= _i; } }
+}
+
+void maxvec(double *x, int ini, int fi, double *xmax, int *maxpos) {
+//Maximum of vector x[ini..fi] is returned in xmax. Position at which max occurs is returned in maxpos
+  int _i;
+  *xmax= x[ini]; *maxpos= ini;
+  for (_i=ini+1;_i<=fi;_i++) { if (x[_i]>(*xmax)) { *xmax= x[_i]; *maxpos= _i; } }
+}
+
+
 void choldc(double **a, int n, double **aout) {
 /*Given a positive-definite symmetric matrix a[1..n][1..n], this routine constructs its Cholesky
 decomposition, A = L * L' . On input, only the upper triangle of a need be given; 
@@ -980,6 +1301,13 @@ void choldc_inv(double **a, int n, double **aout) {
 
 double choldc_det(double **chols, int n) {
   //Find determinant of the matrix having chols as its Cholesky decomposition
+  //Example of usage
+  //  choldc(S,n,cholS);
+  //  det= choldc_det(cholS,n);
+  //
+  //Another example
+  //  choldc_inv(S,n,cholSinv);
+  //  det= 1.0/choldc_det(cholSinv,n);
   int i; double det;
   for (det=1,i=1; i<=n; i++) { det *= chols[i][i]*chols[i][i]; }
   return(det);
@@ -1005,6 +1333,48 @@ void inv_posdef(double **a, int n, double **aout) {
 
 }
 
+
+void invdet_posdef(double **a, int n, double **aout, double *det_a) {
+  /* Inverse and determinant of a positive definite matrix a[1..n][1..n] using Cholesky decomposition
+     Inverse is returned in aout, determinant in det_a */
+  int i,j,k;
+  double **b, sum;
+
+  b= dmatrix(1,n,1,n);
+  choldc_inv(a,n,b);
+  for (i=1, *det_a=1; i<=n; i++) { (*det_a)*= 1/(b[i][i]*b[i][i]); }
+  for (i=1; i<=n; i++) {
+    for (j=i; j<=n; j++) {
+      for (k=1,sum=0;k<=n;k++) { sum+= b[k][i]*b[k][j]; }
+      aout[i][j]= sum;
+    }
+  }
+  for (i=2; i<=n; i++) { for (j=1;j<i;j++) { aout[i][j]= aout[j][i]; }}
+  free_dmatrix(b,1,n,1,n);
+
+}
+
+
+void inv_posdef_chol(double **invchol, int n, double **aout) {
+  /* Inverse of a positive definite matrix with inverse of Cholesky decomposition stored in invchol
+     Result is returned in aout */
+  // Example of usage
+  //   choldc_inv(a,n,invchol);
+  //   inv_posdef_chol(invchol,n,ainv);
+  int i,j,k;
+  double sum;
+
+  for (i=1; i<=n; i++) {
+    for (j=i; j<=n; j++) {
+      for (k=1,sum=0;k<=n;k++) { sum+= invchol[k][i]*invchol[k][j]; }
+      aout[i][j]= sum;
+    }
+  }
+  for (i=2; i<=n; i++) { for (j=1;j<i;j++) { aout[i][j]= aout[j][i]; }}
+
+}
+
+
 /* LU decomposition, Inverse and determinant of a non-singular matrix */
 void ludc(double **a, int n, int *indx, double *d) {
 /* Given a matrix a[1..n][1..n], this routine replaces it by the LU decomposition of a rowwise
@@ -1014,7 +1384,8 @@ pivoting; d is output as  1 depending on whether the number of row interchanges 
 or odd, respectively. This routine is used in combination with lu_solve to solve linear equations
 or invert a matrix. */
 
-  int i,imax,j,k;
+//  int i,imax,j,k; //initialized imax to 1 to avoid warning when compiling
+  int i,imax=1,j,k;
   double big,dum,sum,temp,TINY=1.0e-20;
   double *vv; //vv stores the implicit scaling of each row.
   vv=dvector(1,n);
@@ -1121,8 +1492,10 @@ double lu_det(double **a, int n) {
   double d;
   int j,*indx;
 
+  indx= ivector(1,n);
   ludc(a,n,indx,&d); //This returns d as +/-1.
   for(j=1;j<=n;j++) d *= a[j][j];
+  free_ivector(indx,1,n);
   return(d);
 }
 
@@ -1278,6 +1651,12 @@ double runif()
   return(x); 
 } 
 
+double dunifC(double x, double a, double b) {
+  //Density of a Unif(a,b)
+  return ((x>a) && (x<b)) ? (1.0/(b-a)) : 0; 
+}
+
+
 int runifdisc(int min, int max) {
 //Returns integer value between min and max (both included)
   return(min + runif()*(max+1-min));
@@ -1294,7 +1673,7 @@ int rdisc(double *probs, int nvals) {
   return(i-1);
 }
 
-double rbeta(double alpha, double beta) 
+double rbetaC(double alpha, double beta) 
 { 
       double gamdev(); 
       double x, y; 
@@ -1306,7 +1685,7 @@ double rbeta(double alpha, double beta)
 } 
 
 /* CDF of a Beta distribution */
-double pbeta(double x, double a, double b) {
+double pbetaC(double x, double a, double b) {
   double bt, c;
   if (x < 0.0 || x > 1.0) nrerror("Bad x in routine betai","","");
   if (x == 0.0 || x == 1.0) bt=0.0;
@@ -1330,7 +1709,7 @@ void rdirichlet(double *w, double *alpha, int *p)
   for(j=0,W=1.0,b=s;j<*p-1;j++){ 
     a = alpha[j]; 
     b -= alpha[j]; 
-    w[j] = rbeta(a,b)*W; 
+    w[j] = rbetaC(a,b)*W; 
     W -= w[j]; 
   } 
   w[*p-1] = W; 
@@ -1354,7 +1733,7 @@ double gamdev(double alpha)
 /* *************************************************' 
    normal cdf and inv cdf 
  ************************************************* */ 
-double	pnorm(double y, double m, double s) 
+double	pnormC(double y, double m, double s) 
 /* returns cdf of normal N(m,s^2) at x */ 
 {	 
   double  /* used to all be float... */
@@ -1383,7 +1762,7 @@ double	pnorm(double y, double m, double s)
 }
 
 
-double dnorm(double y, double m, double s, int logscale) {
+double dnormC(double y, double m, double s, int logscale) {
 /* Density of univariate Normal(m,s^2) evaluated at y. log==1 returns in log-scale */
 
   if (logscale==1) return(-log(SQ_M_PI_2)-log(s)-.5*(y-m)*(y-m)/(s*s));
@@ -1391,20 +1770,20 @@ double dnorm(double y, double m, double s, int logscale) {
 
 }
 
-double dmvnorm(double *y, int n, double *mu, double **cholsinv, double det, int logscale) { 
+double dmvnormC(double *y, int n, double *mu, double **cholsinv, double det, int logscale) { 
 /* Density of multivariate Normal evaluated at y[1]...y[n]. mu is the mean. chols and
    are the Cholesky decomposition and the determinant of the inverse covariance matrix.
    Example of usage: 
      choldc_inv(s,n,cholsinv); 
      det= choldc_det(cholsinv,n);
-     dmvnorm(y,n,mu,cholsinv,det,0); */
+     dmvnormC(y,n,mu,cholsinv,det,0); */
   int i;  
   double *z,*z2, res;
 
   //Find (y-mu)' * cholsinv' * cholsinv * (y-mu)
   z= dvector(1,n); z2= dvector(1,n);
   for (i=1; i<=n; i++) { z[i]= y[i]-mu[i]; }
-  Ax(cholsinv,z,z2,1,n);
+  Ax(cholsinv,z,z2,1,n,1,n);
   for (res=0, i=1; i<=n; i++) { res += z2[i]*z2[i]; }
   free_dvector(z,1,n); free_dvector(z2,1,n);
 
@@ -1414,7 +1793,7 @@ double dmvnorm(double *y, int n, double *mu, double **cholsinv, double det, int 
 }
 
 
-double	qnorm (double cdf, double m, double s) 
+double	qnormC (double cdf, double m, double s) 
 /* returns inv cdf of normal N(m,s^2) at p */ 
 {	 
   double /* used to all be floats.. */
@@ -1425,7 +1804,7 @@ double	qnorm (double cdf, double m, double s)
     status,which; 
  
   if( (cdf < 0.0) | (cdf > 1.0) ){ 
-    error("qnorm",  "Tried inverse cdf with p<0 or p>1", 1); 
+    errorC("qnormC",  "Tried inverse cdf with p<0 or p>1", 1); 
   }  
   /* par check */ 
   if (cdf <= 2.86e-07) 
@@ -1492,7 +1871,7 @@ void multinomial(int n_draw, int n_cell, double *pr, int *x)
 
 
 // Draw from univariate Normal(mu,s^2)
-double rnorm(double mu, double s) {
+double rnormC(double mu, double s) {
 
 static int iset=0;
 static double gset;
@@ -1521,7 +1900,7 @@ double fac,rsq,v1,v2;
 double rnorm_trunc(double ltrunc, double rtrunc, double m, double s) {
   // ltrunc: left truncation point; rtrunc: right truncation point, m: mean; s: SD
   double lprob, rprob;
-  lprob= pnorm(ltrunc,m,s); rprob= pnorm(rtrunc,m,s);
+  lprob= pnormC(ltrunc,m,s); rprob= pnormC(rtrunc,m,s);
   return(rnorm_trunc_prob(lprob,rprob,m,s));
 }
 
@@ -1532,33 +1911,33 @@ double rnorm_trunc_prob(double lprob, double rprob, double m, double s) {
   double u;
   if (lprob>=rprob) nrerror("rnorm_trunc_prob","left truncation probability is larger than right truncation probability","");
   u= lprob + runif()*(rprob-lprob);  //generate uniform between lprob, rprob
-  u= qnorm(u,m,s);
+  u= qnormC(u,m,s);
   return(u);
 
 }
 
 
 // Draw from multivar Normal with n dimensions
-void rmvnorm(double *y, int n, double *mu, double **chols) {
+void rmvnormC(double *y, int n, double *mu, double **chols) {
 /* Result is stored in y[1..n]. mu is the location parameter, chols is the Cholesky decomposition
    of the covariance matrix. That is, the covariance is s and s=chols*chols'
    Note: both y and mu should have length n, and s should be an n*n matrix. The routine doesn't
    check it 
    Example: choldc(s,n,chols); //compute cholesky decomposition
-            rmvnorm(y,n,mu,chols); //generate random variate */
+            rmvnormC(y,n,mu,chols); //generate random variate */
 
   int i;
   double *z;
 
   z= dvector(1,n);
-  for (i=1;i<=n;i++) { z[i]= rnorm(0,1); } //generate n independent draws from a univariate Normal
-  Ax_plus_y(chols,z,mu,y,1,n+1);           //compute mu + chols*z
+  for (i=1;i<=n;i++) { z[i]= rnormC(0,1); } //generate n independent draws from a univariate Normal
+  Ax_plus_y(chols,z,mu,y,1,n);             //compute mu + chols*z
   free_dvector(z,1,n);
 
 }
 
 
-double dt(double y, double mu, double s, int nu) { 
+double dtC(double y, double mu, double s, int nu) { 
 //Density of t with nu df, location mu and scale s^2
   double normk, t1, t2;
 
@@ -1569,20 +1948,20 @@ double dt(double y, double mu, double s, int nu) {
 
 }
 
-double dmvt(double *y, int n, double *mu, double **cholsinv, double det, int nu, int logscale) {
+double dmvtC(double *y, int n, double *mu, double **cholsinv, double det, int nu, int logscale) {
 /* Density of multivariate T with nu df and n dimensions. mu: location, cholsinv, det: cholesky
    decomp and determinant of inverse cov matrix, logscale: set to 1 to return density in log-scale
    Example of usage: 
      choldc_inv(s,n,cholsinv); 
      det= choldc_det(cholsinv,n);
-     dmvt(y,n,mu,cholsinv,det,nu,0); */
+     dmvtC(y,n,mu,cholsinv,det,nu,0); */
   int i;  
   double *z,*z2, res, t1, t2, normk;
 
   //Find (y-mu)' * cholsinv' * cholsinv * (y-mu)
   z= dvector(1,n); z2= dvector(1,n);
   for (i=1; i<=n; i++) { z[i]= y[i]-mu[i]; }
-  Ax(cholsinv,z,z2,1,n);
+  Ax(cholsinv,z,z2,1,n,1,n);
   for (res=0, i=1; i<=n; i++) { res += z2[i]*z2[i]; }
   free_dvector(z,1,n); free_dvector(z2,1,n);
 
@@ -1595,10 +1974,10 @@ double dmvt(double *y, int n, double *mu, double **cholsinv, double det, int nu,
 }
 
 /* Draw from a univariate standard t with nu degrees of freedom */
-double rt(int nu) {
+double rtC(int nu) {
   double x, z;
 
-  z= rnorm(0,1);
+  z= rnormC(0,1);
   x= gengam(.5,nu/2.0);  //draw from chi-square with nu degrees of freedom
   return(z*sqrt(nu/x));
 
@@ -1608,7 +1987,7 @@ double rt(int nu) {
 double rt_trunc(int nu, double ltrunc, double rtrunc) {
   // nu: degrees of freedom; ltrunc: left truncation point; rtrunc: right truncation point
   double lprob, rprob;
-  lprob= pt(ltrunc,nu); rprob= pt(rtrunc,nu);
+  lprob= ptC(ltrunc,nu); rprob= ptC(rtrunc,nu);
   return(rt_trunc_prob(nu,lprob,rprob));
 }
 
@@ -1619,12 +1998,12 @@ double rt_trunc_prob(int nu, double lprob, double rprob) {
   double u;
   if (lprob>=rprob) nrerror("rt_trunc_prob","left truncation probability is larger than right truncation probability","");
   u= lprob + runif()*(rprob-lprob);  //generate uniform between lprob, rprob
-  return(qt(u,nu));
+  return(qtC(u,nu));
 
 }
 
 /* Find quantiles of a t-distribution with nu degrees of freedom */
-double qt(double p, int nu) {
+double qtC(double p, int nu) {
   /* p: probability; nu: degrees of freedom; lower_tail==1 means p indicates left tail area */
  /* * @author Sundar Dorai-Raj
   * * See the GNU General Public License for more details at http://www.gnu.org * * */
@@ -1658,7 +2037,7 @@ double qt(double p, int nu) {
     d = ((94.5 / (b + c) - 3.0) / b + 1.0) * sqrt(a * M_PI_2) * ndf;
     y = pow(d * P, 2.0 / ndf);
     if (y > 0.05 + a) {  /* Asymptotic inverse expansion about normal */
-      x = qnorm(0.5*P,0.0,1.0);
+      x = qnormC(0.5*P,0.0,1.0);
       y = x * x;
       if (ndf < 5)
 	c += 0.3 * (ndf - 4.5) * (x + 0.6);
@@ -1679,34 +2058,49 @@ double qt(double p, int nu) {
 }
 
 /* CDF of a t-Student distribution */
-double pt(double x, int nu) {
+double ptC(double x, int nu) {
 
-  if (x>0) { return(1-0.5*pbeta((nu+0.0)/(x*x+nu),0.5*nu,0.5)); }
-  else if (x<0) { return(0.5*pbeta((nu+0.0)/(x*x+nu),0.5*nu,0.5)); }
+  if (x>0) { return(1-0.5*pbetaC((nu+0.0)/(x*x+nu),0.5*nu,0.5)); }
+  else if (x<0) { return(0.5*pbetaC((nu+0.0)/(x*x+nu),0.5*nu,0.5)); }
   else { return(0.5); }
 
 }
 
 
 // Draw from multivar T with n dimensions and nu degrees of freedom
-void rmvt(double *y, int n, double *mu, double **chols, int nu) {
+void rmvtC(double *y, int n, double *mu, double **chols, int nu) {
 /* Result is stored in y[1..n]. mu is the location parameter, chols is the Cholesky decomposition
    of the covariance matrix. That is, the covariance is s*nu/(nu-2) and s=chols*chols'
    and nu are the degrees of freedom 
    Note: both y and mu should have length n, and s should be an n*n matrix. The routine doesn't
    check it 
    Example: choldc(s,n,chols); //compute cholesky decomposition
-            rmvt(y,n,mu,chols,nu); //generate random variate */
+            rmvtC(y,n,mu,chols,nu); //generate random variate */
 
   int i;
   double x, *z;
 
   x= sqrt(nu/gengam(.5,nu/2.0));  //draw from chi-square with nu degrees of freedom
   z= dvector(1,n);
-  for (i=1;i<=n;i++) { z[i]= x*rnorm(0,1); } //multiple n indep normal draws by the common chi-square
+  for (i=1;i<=n;i++) { z[i]= x*rnormC(0,1); } //multiple n indep normal draws by the common chi-square
   Ax_plus_y(chols,z,mu,y,1,n+1);          //compute mu + chols*z
   free_dvector(z,1,n);
 
+}
+
+
+double rgammaC(double a, double b) {
+  //Generate from a Gamma(a,b) (a is shape; b location; mean= a/b)
+  return(gengam(b,a));
+}
+
+double dgammaC(double x, double a, double b) {
+  //Density of a Gamma(a,b) (a is shape; b location; mean= a/b)
+  if (x!=0) { 
+    return(exp(a*log(b)-gamln(&a)+(a-1)*log(x)-x*b)); 
+  } else {
+    if (a==1) return(b); else return(0);
+  }
 }
 
 
@@ -2975,6 +3369,7 @@ S10:
     return genunf;
 }
 
+
 double gengam(double a,double r)
 /*
 **********************************************************************
@@ -3939,7 +4334,7 @@ double qromo(double (*func)(double), double a, double b, double (*choose)(double
 
 
 /************************************************************************
-          INTERPOLATION AND EXTRAPOLATION
+          INTERPOLATION, EXTRAPOLATION AND SPLINES
 ************************************************************************/
 
 void polint (double xa[], double ya[], int n, double x, double *y, double *dy)
@@ -3983,6 +4378,82 @@ void polint (double xa[], double ya[], int n, double x, double *y, double *dy)
   free_dvector(d,1,n);
   free_dvector(c,1,n);
 
+}
+
+
+double bspline_singlex(double x, int j, int degree, double *knots) {
+/*Returns the jth B-spline basis evaluated at single value x
+  - x: value at which to evaluate the B-spline basis
+  - j: basis
+  - degree: degree of the B-spline (0: piecewise constant, 1:linear etc.)
+  - knots: sequence of knots
+*/
+  double ans;
+  if (degree==0) {
+    if (knots[j]<=x && x<knots[j+1]) ans= 1.0; else ans= 0.0;
+  } else {
+    ans= bspline_singlex(x,j,degree-1,knots)*(x-knots[j])/(knots[j+degree]-knots[j]) + bspline_singlex(x,j+1,degree-1,knots)*(knots[j+degree+1]-x)/(knots[j+degree+1]-knots[j+1]);
+  }
+  return(ans);
+}
+
+void bspline(double **W, double *x, int *nx, int *degree, double *knots, int *nknots) {
+ //B-spline basis eval at vector of values x. Normalized to sum to 1 at any x value.
+ /* Input
+      - x: vector of values at which to evaluate the B-spline basis
+      - nx: length of x
+      - degree: degree of the spline (0: piecewise constant, 1: linear etc.)
+      - knots: vector with positions of the knots
+      - nknots: length of knots
+    Output
+      - W: matrix with nx rows and nknots-degree-1 columns containing the B-spline basis
+   */
+  int i,j;
+  if (*nknots<(*degree+2)) {
+    printf("error: number of knots must be >= degree + 2");
+  } else {
+    for (i=0; i<(*nx); i++) {
+      for (j=0; j<(*nknots - *degree -1); j++) {
+        W[i][j]= bspline_singlex(x[i],j,*degree,knots);
+      }
+    }
+  }
+}
+
+void bspline_vec(double *W, double *x, int *nx, int *degree, double *knots, int *nknots) {
+  //same as routine bspline but returs a vector so that it can be called from R
+  int i,j;
+  double **Wtemp;
+
+Wtemp= dmatrix(0,*nx,0,*nknots- *degree -1);
+bspline(Wtemp,x,nx,degree,knots,nknots);
+for (i=0; i<(*nx); i++) { for (j=0; j<(*nknots - *degree -1); j++) { W[i*(*nknots - *degree -1)+j]= Wtemp[i][j]; } }
+free_dmatrix(Wtemp,0,*nx,0,*nknots- *degree -1);
+}
+
+void mspline(double **W, double *x, int *nx, int *degree, double *knots, int *nknots) {
+  //M-spline basis eval at vector of values x. Normalized to integrate to 1 wrt x
+  int i,j;
+  if (*nknots<(*degree+2)) {
+    printf("error: number of knots must be >= degree + 2");
+  } else {
+    for (i=0; i<(*nx); i++) {
+      for (j=0; j<(*nknots - *degree -1); j++) {
+        W[i][j]= bspline_singlex(x[i],j,*degree,knots)*(*degree+1.0)/(knots[j+ *degree +1]-knots[j]);
+      }
+    }
+  }
+}
+
+void mspline_vec(double *W, double *x, int *nx, int *degree, double *knots, int *nknots) {
+  //same as routine mspline but returs a vector so that it can be called from R
+  int i,j;
+  double **Wtemp;
+
+Wtemp= dmatrix(0,*nx,0,*nknots- *degree -1);
+mspline(Wtemp,x,nx,degree,knots,nknots);
+for (i=0; i<(*nx); i++) { for (j=0; j<(*nknots - *degree -1); j++) { W[i*(*nknots - *degree -1)+j]= Wtemp[i][j]; } }
+free_dmatrix(Wtemp,0,*nx,0,*nknots- *degree -1);
 }
 
 

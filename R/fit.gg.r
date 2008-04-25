@@ -21,11 +21,17 @@ if (is(x, "ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
-groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
+if (min(x)<0) stop("x can only have positive values")
+if (sum(is.na(x))>0) stop("x cannot have any NA values")
+groups <- as.numeric(groups); groups <- as.integer(as.integer(factor(groups,levels=names(table(groups))))-1)
+K <- as.integer(max(groups)+1)
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
 if (missing(patterns)) patterns <- rbind(rep(0,K),0:(K-1))
 if (length(table(groups))!=ncol(patterns)) stop('patterns must have the same number of columns as the number of distinct groups')
 if (ncol(patterns)!=K) stop('patterns must have number of columns equal to the number of distinct elements in groups')
+if (sum(is.na(patterns))>0) stop('patterns cannot have any NA values')
+if (sum(is.nan(patterns))>0) stop('patterns cannot have any NaN values')
+if (sum(is.infinite(patterns))>0) stop('patterns cannot have any Inf values')
 for (i in 1:nrow(patterns)) { patterns[i,] <- as.integer(as.integer(as.factor(patterns[i,]))-1) }
 class(patterns) <- 'gagahyp'
 ngrouppat <- as.integer(apply(patterns,1,'max')+1)
@@ -36,7 +42,7 @@ npat <- as.integer(nrow(patterns))
 if (nclust==1) probclusini <- 1
 if (missing(parini)) {
   if (trace) cat('Initializing parameters...')
-  aest <- rowMeans(x)^2/apply(x,1,'var'); lest <- 1/rowMeans(x)
+  aest <- rowMeans(x)^2/((rowMeans(x^2)-rowMeans(x)^2)*ncol(x)/(ncol(x)-1)); lest <- 1/rowMeans(x)
   sel <- (aest<quantile(aest,probs=.99)) & (lest<quantile(lest,probs=.99))
   aest <- aest[sel]; lest <- lest[sel]
   balphaini <- as.double(mean(aest)^2/var(aest)); nualphaini <- as.double(mean(aest))
@@ -49,7 +55,10 @@ if (missing(parini)) {
     nuini <- as.double(tapply(lest,clusini,'mean'))
     probclusini <- as.double(table(clusini)/length(clusini))
   }
-  probpatini <- rep(1/K,K)
+  if (trace) cat(' Done.\n')
+  if (trace) cat('Refining initial estimates...')
+  probpatini <- rep(1/nrow(patterns),nrow(patterns))
+  for (i in 1:5) { probpatini <- colMeans(pp.gg(x,groups,a0ini,nuini,balphaini,nualphaini,probclusini,probpatini,patterns)$pp) }
   if (trace) cat(' Done.\n')
 } else {
   if (is.null(parini$a0) | is.null(parini$nu) | is.null(parini$balpha) | is.null(parini$nualpha) | is.null(parini$probpat)) stop('some components of parini are empty')
@@ -64,7 +73,7 @@ if (method=='EBayes') {
   if (nclust>1) stop('nclust>1 is not currently implemented for empirical Bayes method')
   if (trace) cat('Starting EM algorithm...\n')
   z <- fitfreq.gg(x,groups,patterns,nclust=1,a0ini,nuini,balphaini,nualphaini,probpatini,iter.max=100,trace=trace)
-  parest <- c(alpha0=z$alpha0,nu=z$nu,balpha=z$balpha,nualpha=z$nualpha,probclus=1,probpat.1=z$probpat[1],probpat.2=z$probpat[2])
+  parest <- c(alpha0=z$alpha0,nu=z$nu,balpha=z$balpha,nualpha=z$nualpha,probclus=1,probpat=z$probpat)
   gg.fit <- list(parest=parest,mcmc=as.mcmc(NA),lhood=z$lhood,nclust=nclust,patterns=patterns,method=method)
   class(gg.fit) <- 'gagafit'
   return(gg.fit)

@@ -1016,7 +1016,7 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
   int i, ncolsumx, one=1, *sel, B10, *cluslist;
 
-  double *sumx, *prodx, *nobsx, *sumxpred, *prodxpred, *nobsxpred, *sumd, *sumci, *sumalpha, *sumlogalpha, *suminvlambda, *sumlambda, *sumloglambda, *v, *ngroupstot, malpha0;
+  double *sumx, *prodx, *nobsx, *sumxpred, *prodxpred, *nobsxpred, *sumd, *sumci, *sumalpha, *sumlogalpha, *suminvlambda, *sumlambda, *sumloglambda, *v, *ngroupstot;
 
 
 
@@ -1188,6 +1188,10 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
 
 
 
+  sumxpred= dvector(0,1); prodxpred= dvector(0,1); nobsxpred= dvector(0,1); //never used: initialized to avoid warnings
+
+
+
   colini= ivector(0,*npat);
 
   colini[0]= 0; for (i=1; i<(*npat); i++) { colini[i]= colini[i-1] + ngrouppat[i-1]; }   //column of sumx at which each pattern starts
@@ -1259,6 +1263,10 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
     if (pgroup[k]>maxp) { (*d)= k; maxp= pgroup[k]; }
 
   }
+
+
+
+  free_dvector(sumxpred,0,1); free_dvector(prodxpred,0,1); free_dvector(nobsxpred,0,1);
 
 
 
@@ -1662,9 +1670,9 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
 */
 
-  int *groups0, i, j, k, interval, *sel, usesumx=0, *nde, *nde0, B10, u;
+  int *groups0, i, j, k, *sel, usesumx=0, *nde, *nde0, B10, u;
 
-  double *v, lhood, *prob0, *probnew, err, eps=0.001, *xboot, *threshold, *pboot;
+  double *v, lhood, *prob0, *probnew, *xboot, *threshold, *pboot;
 
   //FILE *ifile; //debug
 
@@ -2864,9 +2872,9 @@ void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x,
 
 
 
-  int i, j, k, m, group, *colini, ncolsumx, init0=1, usexpred=1;
+  int i, j, k, m, *colini, ncolsumx, init0=1, usexpred=1;
 
-  double *sx, *px, *nx, *sumpat, *prodpat, *nobs, vsum, one=1.0, zero=0.0, r0, rcur, rsum, lgene;
+  double vsum, r0, rcur, rsum, lgene;
 
 
 
@@ -3196,6 +3204,10 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
 
 
+  sumxpred= dvector(0,1); prodxpred= dvector(0,1); nobsxpred= dvector(0,1); //never used: initialized to avoid warnings
+
+
+
   vclus= dvector(0,*nclust);
 
   colini= ivector(0,*npat);
@@ -3294,6 +3306,8 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
   free_dvector(vclus,0,*nclust);
 
+  free_dvector(sumxpred,0,1); free_dvector(prodxpred,0,1); free_dvector(nobsxpred,0,1);
+
 
 
 }
@@ -3373,6 +3387,10 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
   //FILE *ofile; //debug
 
   //ofile= openOut("simpar.txt"); //debug
+
+
+
+  sumxpred= dvector(0,1); prodxpred= dvector(0,1); nobsxpred= dvector(0,1); //never used: initialized to avoid warnings
 
 
 
@@ -3490,6 +3508,10 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
 
 
+  free_dvector(sumxpred,0,1); free_dvector(prodxpred,0,1); free_dvector(nobsxpred,0,1);
+
+
+
   //fclose(ofile); //debug
 
 
@@ -3565,6 +3587,10 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
   int i, j, m, found, group, di, ci, ncolpred, ncolsumx, *colini, one=1, newton=1, usexpred=0;
 
   double u, rsum, vcum, *lambda, *a, b1, b2, s, *vclus, *sumxpred, *prodxpred, *nobsxpred;
+
+
+
+  sumxpred= dvector(0,1); prodxpred= dvector(0,1); nobsxpred= dvector(0,1); //never used: initialized to avoid warnings
 
 
 
@@ -3691,6 +3717,10 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
     }
 
   }  //End i for
+
+
+
+  free_dvector(sumxpred,0,1); free_dvector(prodxpred,0,1); free_dvector(nobsxpred,0,1);
 
 
 
@@ -4137,322 +4167,6 @@ double logcgammafpp(double x, double a, double b, double c, double d, double r, 
 
 
 
-
-
-
-//void dcgammaC(double *y, double *normk, double *x, int *n, double *a, double *b, double *c) {
-
-  /* Returns density of a conjugate gamma shape distribution evaluated at x */
-
-  /* Un-normalized density is exp(-b*x) * gamma(x*(a+c)) / (gamma(c*x)*gamma(x)^a) */
-
-  /* Input:
-
-     - x: vector with points to evaluate the density at
-
-     - n: length of x and y
-
-     - a,b,c: a,b,c parameters
-
-     - gapprox: if gapprox==1 the density of an approximating Gamma distrib is returned
-
-     Output: 
-
-     - y: density of a conjugate gamma shape distribution with parameters a,b,c evaluated at x
-
-     - normk: normalization constant.
-
-   */
-
-/*  int i; double aest, best;
-
-
-
-if (*a == 0) {    //distribution is exponential
-
-  for (i=0; i<(*n); i++) { y[i]= *b * exp(-(*b)*x[i]); }
-
-  *normk= 1/(*b);
-
-} else {          //distribution is not exponential
-
-  aest= 1 + .5*(*a);
-
-  best= *b + (*c)*log(*c) - (*a + *c)*log(*a + *c);
-
-  *normk= -0.5*(*a)*log(2*M_PI) + .5*log((*c)/(*a + *c)) - aest*log(best) + gamln(&aest);
-
-  for (i=0; i<(*n); i++) { y[i]= exp(aest*log(best) - gamln(&aest) + (aest-1)*log(x[i])-best*x[i]); }
-
-  *normk= exp(*normk);
-
-}
-
-
-
-}
-
-
-
-double kcgammaC(double *a, double *b, double *c) {
-
-/* Finds normalization constant for a conjugate gamma shape distribution */
-
-/* Un-normalized density is exp(-b*x) * gamma(x*(a+c)) / (gamma(c*x)*gamma(x)^a) */
-
-/* Input:
-
-   - a,b,c: a,b,c parameters
-
-   Output: normalization constant 
-
-   Details: density is approximated with Gamma matching the location of the mode and the value of the log-density
-
-*/
-
-/*
-
- double aest, best, ans; 
-
-
-
- if (*a == 0) {          //distribution is exponential
-
-   ans= 1/(*b);
-
- } else {                //distribution is not exponential
-
-   aest= 1 + .5*(*a);
-
-   best= *b + (*c)*log(*c) - (*a + *c)*log(*a + *c);
-
-   ans= exp(-0.5*(*a)*log(2*M_PI) + .5*log((*c)/(*a + *c)) - aest*log(best) + gamln(&aest));
-
- }
-
-
-
- return(ans);
-
-}
-
-
-
-void mcgammaC(double *normk, double *m, double *v, double *a, double *b, double *c) {
-
-/* Computes mean & variance for a conjugate gamma shape distribution */
-
-/* Input:
-
-   - a,b,c: a,b,c parameters
-
-   Output: 
-
-   - normk: normalization constant.
-
-   - m: mean of a conjugate gamma shape distribution with parameters a,b,d
-
-   - v: variance of a conjugate gamma shape distribution with parameters a,b,d
-
-*/
-
-/*
-
-  double aest, best;
-
-
-
-if (*a == 0) {    //distribution is exponential
-
-  *normk= *m= 1/(*b);
-
-  *v= (*m)/(*b);
-
-} else {          //distribution is not exponential
-
-   aest= 1 + .5*(*a);
-
-   best= *b + (*c)*log(*c) - (*a + *c)*log(*a + *c);
-
-   *normk= exp(-0.5*(*a)*log(2*M_PI) + .5*log((*c)/(*a + *c)) - aest*log(best) + gamln(&aest));
-
-   *m= aest/best;
-
-   *v= (*m)/best;
-
-}
-
-
-
-}
-
-
-
-
-
-void rcgammaC(double *x, int *n, double *a, double *b, double *c) {
-
-/* Generates random draws from a conjugate gamma shape distribution by approximating it with a Gamma */
-
-/* Input:
-
-   - n: number of random draws to generate (length of x)
-
-   - a,b,c: a,b,c parameters
-
-   Output:
-
-   - x: vector of length n with the random draws
-
-*/
-
-/*
-
-  int i;
-
-  double aest, best;
-
-
-
-if (*a == 0) {    //distribution is exponential
-
-  for (i=0; i<(*n); i++) { x[i]= gengam(*b,1); }
-
-} else {          //distribution is not exponential
-
-  aest= 1 + .5*(*a);
-
-  best= *b + (*c)*log(*c) - (*a + *c)*log(*a + *c);
-
-  for (i=0; i<(*n); i++) { x[i]= gengam(best,aest); }
-
-}
-
-
-
-}
-
-
-
-
-
-//void rgencgammaC(double *x, int *n, double *alpha, double *a, double *sumalpha, double *b, double *c) {
-
-/* Generates random draws from a general conjugate gamma shape distribution by approximating it with a Gamma */
-
-/* Input:
-
-   - n: number of random draws to generate (length of x)
-
-   - alpha, a: alpha is a vector of parameters of length a (careful: a is a double)
-
-   - sumalpha: sum of elements 0..a-1 of alpha 
-
-   - b,c: b,c parameters
-
-   Output:
-
-   - x: vector of length n with the random draws
-
-*/
-
-/*  int i;
-
-  double m, fmin, fp, fpp, aest, best, ax, bx, cx, fa, fb, fc;
-
-  double trigammafast(double x) { return(1/(x*x) + 1/((x+1)*(x+1)) + 1/((x+2)*(x+2)) + 1/(x+3) + .5/((x+3)*(x+3)) + 1/(6.0*pow(x+3,3))); }  //fast approx to trigamma
-
-  double logf (double x) {
-
-    //evaluates log-density at x (up to a constant)
-
-    int i; double t, l;
-
-    t= x*(*sumalpha + *c); l= gamln(&t) - x*(*b);
-
-    t= x*(*c); 
-
-    l-= gamln(&t);
-
-    for (i=0; i<(*a -.5); i++) { t= x*alpha[i]; l-= gamln(&t); }
-
-    return(-l);
-
-  }
-
-  double logfp (double x) {
-
-    //evaluates 1st deriv of log-density at x
-
-    int i; double t, l;
-
-    t= x*(*c + *sumalpha); l= (*c + *sumalpha)*digamma(t) - *b;
-
-    t= x*(*c); l-= (*c)*digamma(t);
-
-    for (i=0; i<(*a -.5); i++) { t= x*alpha[i]; l-= alpha[i]*digamma(t); }
-
-    return(l);
-
-  }
-
-  double logfpp (double x) {
-
-    //evaluates 2nd deriv of log-density at x
-
-    int i; double t, l;
-
-    t= x*(*c + *sumalpha); l= (*c + *sumalpha)*(*c + *sumalpha)*trigamma(t);
-
-    t= x*(*c); l-= (*c)*(*c)*trigamma(t);
-
-    for (i=0; i<(*a -.5); i++) { t= x*alpha[i]; l-= alpha[i]*alpha[i]*trigamma(t); }
-
-    return(l);
-
-  }
-
-
-
-//Initial guess (based on Stirling approx)
-
-best= *b + (*c)*log(*c/(*c + *sumalpha));
-
-for (i=0; i<(*a -.5); i++) { best+= alpha[i]*log(alpha[i]/(*sumalpha+ *c)); }
-
-aest= 1 + .5*(*a);
-
-
-
-//Find mode with 1 Newton step
-
-//bx= (aest-1)/best; ax= .8*bx; cx=1.2*bx;
-
-//mnbrak(&ax,&bx,&cx,&fa,&fb,&fc,&logf);
-
-//fmin= brent(ax,bx,cx,logf,1.0e-3,&m,10);
-
-m= (aest-1)/best;
-
-fp= logfp(m); fpp= logfpp(m);
-
-if (logfp(m)>logfp(m-fp/fpp)) { m= m- fp/fpp; }
-
-
-
-//Find Gamma matching mode and 2nd deriv at the mode
-
-fpp= logfpp(m);
-
-aest= 1 - m*m*fpp; best= -m*fpp;
-
-for (i=0; i<(*n); i++) { x[i]= gengam(best,aest); }
-
-
-
-}
-
-*/
 
 
 
