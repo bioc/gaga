@@ -33,13 +33,19 @@
 
 double meani(int *x, int lim);
 double wmeani(int *x, int lim, double *w);
-double meanx(double *x, int lim);
+double meanx(double *x, int lim); //mean of x[0..lim]
 double wmeanx(double *x, int lim, double *w);
-void colMeans(double *m, double *x, int nrow, int ncol);
 double vari(int *x, int lim, int unb);
 double wvari(int *x, int lim, double *w);
 double varx(double *x, int lim, int unb);
 double wvarx(double *x, int lim, double *w);
+double cv(double *x, int ini, int fi); //coefficient of variation i.e. SD/mean
+double cvinv(double *x, int ini, int fi); //coefficient of variation of 1/x
+
+void colMeans(double *m, double *x, int nrow, int ncol);
+void colVar(double *m, double *x, int nrow, int ncol);
+void colCV(double *cv, double *x, int nrow, int ncol);
+void colCVinv(double *cv, double *x, int nrow, int ncol); //CV of 1/x
 
 
 /************************************************************************
@@ -137,6 +143,9 @@ double polygamma(double x, long n, double low, double high, long terms, double n
 double lnbeta(double a, double b); //log of Beta function
 double betacf(double a, double b, double x); //continued fraction for incomplete Beta function
 
+double logit(double x);
+double ilogit(double x);
+
 /**************************************************************/
 /* Vector algebra (vector)                                    */
 /**************************************************************/
@@ -209,6 +218,7 @@ int runifdisc(int min, int max);
 double rbetaC(double , double );
 double pbetaC(double x, double pin, double qin); //quantile from a Beta(pin,qin)
 void rdirichlet(double *w, double *alpha, int *p);
+double ddirichlet(double *w, double *alpha, int *p); //Dirichlet density
 
 // Normal
 double dnormC(double y, double m, double s, int logscale); //density of Normal(m,s^2)
@@ -233,7 +243,7 @@ void rmvtC(double *y, int n, double *mu, double **chols, int nu); //draw from mu
 // Gamma & Inverse gamma
 double rgammaC(double a, double b); //a: shape; b: location; mean=a/b
 double dgammaC(double x, double a, double b); //a: shape; b: location; mean=a/b
-
+double dinvgammaC(double x, double a, double b); //a: shape; b: location; mean of 1/x= a/b
 
 /* More random variate stuff (dcdflib, from CMU statlib "www.stat.cmu.edu") */
 double fifdint(double);

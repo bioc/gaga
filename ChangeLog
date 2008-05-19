@@ -1,0 +1,12 @@
+CHANGES IN VERSION 1.0.0
+- Added a version of the GaGa and MiGaGa models which assumes a constant coefficient of variation across groups. The two versions of the model are accessible through the parameter 'equalcv' available in most functions.
+- Added two new methods to fit the GaGa and MiGaGa models: Simulated Annealing and Metropolis-Hastings. These options are accessible through the parameter 'method' in fitGG. 
+- Functions simGG and simnewsamples now return 'ExpressionSet' objects.
+- Updated vignette with examples using Simulated Annealing and Metropolis-Hastings to fit the model.
+- Updated vignette with information about the two variants of GaGa and MiGaGa models: constant and non-constant coefficient of variation.
+- Changed fake code in vignette to real code.
+- Changed function names to modern nomenclature: fit.gg to fitGG, sim.gg to simGG
+CHANGES IN VERSION 0.99.1
+- Fixed warnings due to uninitialized variables in the C code
+CHANGES IN VERSION 0.99.0
+- Changed word 'library' for 'package' in the Vignette

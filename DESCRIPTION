@@ -1,11 +1,12 @@
 Package: gaga
-Version: 1.1.0
+Version: 1.0.0
 Date: 2008-04-25
 Title: GaGa hierarchical model for microarray data analysis
 Author: David Rossell <rosselldavid@gmail.com>.
 Maintainer: David Rossell <rosselldavid@gmail.com>
 Depends: R (>= 2.5.0), Biobase, coda
-Description: This package fits Rossell's generalizations of the Gamma-Gamma hierarchical model for microarray data analysis, which substantially improve the quality of the fit at a low computational cost. The model can be fit with empirical Bayes and fully Bayesian techniques. Routines are provided to perform differential expression analysis and class prediction.
-License: GPL (version 2 or later)
+Description: This package fits Rossell's generalizations of the Gamma-Gamma hierarchical model for microarray data analysis, which substantially improve the quality of the fit at a low computational cost. The model can be fit via empirical Bayes (Expectation-Maximization and Simulated Annealing) and fully Bayesian techniques (Gibbs and Metropolis-Hastings posterior sampling). Routines are provided to perform differential expression analysis and class prediction.
+License: GPL (>=2)
 LazyLoad: no
 biocViews: Statistics,DifferentialExpression,Classification
+

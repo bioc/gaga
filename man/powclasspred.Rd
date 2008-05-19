@@ -2,7 +2,7 @@
 \alias{powclasspred}
 \alias{powclasspred.gagafit}
 %- Also NEED an '\alias' for EACH other topic documented here.
-\title{Expected probability that a future sample is correctly classified.}
+\title{ Expected probability that a future sample is correctly classified. }
 \description{
   Estimates posterior expected probability that a future sample is correctly
   classified when performing class prediction. The estimate is obtained
@@ -13,14 +13,15 @@ powclasspred(gg.fit, x, groups, prgroups, v0thre=1, ngene=100, B=100)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fit.gg}).}
-  \item{x}{\code{ExpressionSet}, data frame or matrix
+  \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fitGG}). }
+  \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
     containing the gene expression measurements used to fit the model.}
-  \item{groups}{If \code{x} is of type \code{ExpressionSet},
-    \code{groups} should be the name of the column in \code{pData(x)}
-    with the groups that one wishes to compare. If \code{x} is a matrix
-    or a data frame, \code{groups} should be a vector indicating to which
-    group each column in x corresponds to.}
+  \item{groups}{If \code{x} is of type \code{ExpressionSet} or
+    \code{exprSet}, \code{groups} should be the name of the column
+    in \code{pData(x)} with the groups that one wishes to compare. If
+    \code{x} is a matrix or a data frame, \code{groups} should be a
+    vector indicating to which group each column in x
+    corresponds to.}
   \item{prgroups}{Vector specifying prior probabilities for each
     group. Defaults to equally probable groups.}
   \item{v0thre}{Only genes with posterior probability of being equally
@@ -56,15 +57,15 @@ List with components:
     classifying a sample from each group.}
   \item{segroup}{Estimated standard error of \code{ccgroup}.}
 }
-\references{Rossell D. GaGa: a simple and 
+\references{ Rossell D. GaGa: a simple and 
 flexible hierarchical model for microarray
-data analysis. \url{http://rosselldavid.googlepages.com}.}
-\author{David Rossell}
-\seealso{\code{\link{classpred}}, \code{\link{fit.gg}},
-  \code{\link{parest}}}
+data analysis. \url{http://rosselldavid.googlepages.com}. }
+\author{ David Rossell }
+\seealso{ \code{\link{classpred}}, \code{\link{fitGG}},
+  \code{\link{parest}} }
 \examples{
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
-\keyword{htest}
-\keyword{models}
+\keyword{ htest }
+\keyword{ models }

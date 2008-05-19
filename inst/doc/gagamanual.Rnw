@@ -36,7 +36,7 @@
 
 \begin{document}
 
-\title{Manual for the R \texttt{gaga} library}
+\title{Manual for the R \texttt{gaga} package}
 \author{David Rossell \\
 \small{Department of Biostatistics} \\
 \small{The University of Texas M. D. Anderson Cancer Center} \\
@@ -81,6 +81,21 @@ $\delta_1 \ldots \delta_n$ are latent variables indicating what expression
 pattern each gene follows (see Section \ref{sec:modelfit} for more details).
 For example, if there are only two groups $\delta_i$ indicates whether
 gene $i$ is differentially expressed or not.
+
+In principle, both the shape and mean parameters are allowed to vary between groups,
+and $\delta_i$ compares both parameters between groups 
+({\it i.e.} the GaGa model allows to compare not only mean expression levels but also
+the shape of the distribution between groups).
+However, the \texttt{gaga} library also implements a particular version of the model
+which assumes that the shape parameter is constant across groups,
+{\it i.e.} $\alpha_{i,k}=\alpha_i$ for all $k$.
+The coefficient of variation in the Gamma distribution is equal to the inverse square root
+of the shape parameter, and hence assuming constant $\alpha_{i,k}$ is equivalent
+to assuming constant CV across groups.
+In most routines the user can choose the constant CV model with the
+option \texttt{equalcv=TRUE} (the default), and the varying CV model with
+the option \texttt{equalcv=FALSE}.
+
 The Bayesian model is completed by specifying priors on the hyper-parameters
 that govern the hierarchy:
 \begin{align}
@@ -99,7 +114,7 @@ from the R library \texttt{affy} \cite{rpkg:affy}
 or \texttt{just.gcrma} from the R library \texttt{just.gcrma}.
 The MiGaGa model extends GaGa by specifying a mixture of inverse gammas
 for $\nu$.
-Both models are fit using the routine \texttt{fit.gg}: the argument
+Both models are fit using the routine \texttt{fitGG}: the argument
 \texttt{nclust} indicates the number of components in the mixture
 (\texttt{nclust=1} corresponds to the GaGa model).
 
@@ -133,37 +148,41 @@ n <- 100; m <- c(6,6)
 a0 <- 25.5; nu <- 0.109
 balpha <- 1.183; nualpha <- 1683
 probpat <- c(.95,.05)
-xsim <- sim.gg(n,m,p.de=probpat[2],a0,nu,balpha,nualpha)
+xsim <- simGG(n,m,p.de=probpat[2],a0,nu,balpha,nualpha,equalcv=TRUE)
 @ 
 
-The object \texttt{xsim} is a list with 3 components.
-\texttt{x} is a matrix containing the expression levels for the 100 genes
-and 12 samples. 
-\texttt{a} is a matrix containing the gene-specific $\alpha$ parameters
+The object \texttt{xsim} is an \texttt{ExpressionSet}.
+The simulated expression values are accessible through \texttt{exprs(xsim)},
+the parameters through \texttt{featureData(xsim)}
+and the group that each observation belongs through \texttt{pData(xsim)}.
+We save in \texttt{a} a matrix containing the gene-specific $\alpha$ parameters
 (\texttt{a[,1]} contains parameters for the first group,
-\texttt{a[,2]} for the second),
-and \texttt{l} contains the gene-specific means $\lambda$.
+\texttt{a[,2]} for the second).
+Similarly, we save the gene-specific means $\lambda$ in \texttt{l}
+and the expression values in \texttt{x}.
 
 <<two>>=
-names(xsim)
-dim(xsim$x)
-dim(xsim$a)
-dim(xsim$l)
+xsim
+featureData(xsim)
+phenoData(xsim)
+a <- fData(xsim)[,c("alpha.1","alpha.2")]
+l <- fData(xsim)[,c("mean.1","mean.2")]
+x <- exprs(xsim)
 @ 
 
 Figure \ref{fig:fig1}(a) shows
 the marginal distribution (kernel density estimate)
 of the simulated gene expression levels.
-Figure \ref{fig:fig1}(b) plots the simulated $(\alpha,\lambda)$
-pairs.
+Figure \ref{fig:fig1}(b) plots the simulated mean
+and coefficient of variation for group 1.
 The plots can be obtained with the following syntax:
 
 <<label=fig1aplot,include=FALSE>>=
-plot(density(xsim$x),xlab='Expression levels',main='')
+plot(density(x),xlab='Expression levels',main='')
 @
 
 <<label=fig1bplot,include=FALSE>>=
-plot(xsim$l,xsim$a,xlab='Mean',ylab='1/sqrt(CV)')
+plot(l[,1],1/sqrt(a[,1]),xlab='Group 1 Mean',ylab='Group 1 CV')
 @ 
 
 \setkeys{Gin}{width=0.5\textwidth} 
@@ -188,10 +207,10 @@ plot(xsim$l,xsim$a,xlab='Mean',ylab='1/sqrt(CV)')
 
 \section{Model fit}
 \label{sec:modelfit}
-To fit the model we use the function \texttt{fit.gg}.
-First we need to specify a vector \texttt{groups} that
-indicates the group to which each sample belongs to.
-Second, we need to specify the gene expression patterns
+To fit the model we use the function \texttt{fitGG}.
+First, we define the vector \texttt{groups}, which
+indicates the group each sample belongs to.
+Second, we specify the gene expression patterns
 or hypotheses that we wish to entertain. 
 In our example, since we have two groups there really are
 only two possible expression patterns:
@@ -212,7 +231,7 @@ For example, in our two hypothesis case we would specify:
 
 
 <<three>>=
-groups <- rep(1:2,each=5)
+groups <- pData(xsim)$group[c(-6,-12)]
 patterns <- matrix(c(0,0,0,1),2,2)
 patterns
 @ 
@@ -227,40 +246,54 @@ For illustration, suppose that instead we had 3 groups and 4 hypotheses, as foll
 \end{description}
 In this case we would specify
 
-\begin{verbatim}
-> patterns <- matrix(c(0,0,0,0,1,1,0,0,1,0,1,2),ncol=3,byrow=TRUE)
-> patterns
-     [,1] [,2] [,3]
-[1,]    0    0    0
-[2,]    0    1    1
-[3,]    0    0    1
-[4,]    0    1    2
-\end{verbatim}
+<<threebis>>=
+patterns <- matrix(c(0,0,0,0,1,1,0,0,1,0,1,2),ncol=3,byrow=TRUE)
+patterns
+@
+
 That is, the second row indicates that under the second hypothesis groups
 2 and 3 are equal, since they both have a \texttt{1} in their entries.
 The last row indicates that they are all different by
 specifying a different number in each entry.
 
-Now, to fit the GaGa model to our simulated data we use \texttt{fit.gg},
+Now, to fit the GaGa model to our simulated data we use \texttt{fitGG},
 with \texttt{nclust=1} (to fit the MiGaGa model we would set \texttt{nclust}
 to the number of components that we want in the mixture).
 We remove columns 6 and 12 from the dataset, {\it i.e.} we do not use
 them for the fit so that we can evaluate the out-of-sample behavior
 of the classifier built in Section \ref{sec:classpredict}.
 Here we use the option \texttt{trace=FALSE} to prevent iteration information
-from being printed. By default the routine performs \texttt{B=1000} MCMC
-iterations, which is typically enough for a GaGa model and it can be done
-reasonably fast. 
+from being printed. 
+There are several available methods to fit the model.
+Specifying \texttt{method=='Gibbs'} or \texttt{method=='MH'} fits a fully
+Bayesian model via Gibbs or Metropolis-Hastings MCMC posterior sampling, respectively.
+\texttt{method=='SA'} implements a Simulated Annealing scheme which
+searches for a hyper-parameter value with high posterior density.
+\texttt{method=='EM'} implements an Expectation-Maximization algorithm which seeks
+to maximize the expected likelihood.
+\texttt{'EM'} and \texttt{'SA'} are computationally quicker than
+\texttt{'Gibbs'} and \texttt{'MH'}, but the latter provide credibility intervals
+as well as point estimates.
+In our experience the four methods usually deliver similar results.
+
+By default the routine uses a Simulated Annealing scheme with 200 iterations
+to find hyper-parameter values with high posterior density.
+Of course, a larger number of iterations may be specified, but in practice
+we have found that good hyper-parameter values can be found for the GaGa model
+with only 200 iterations.
 
 <<four>>=
 patterns <- matrix(c(0,0,0,1),2,2)
-ggfit <- fit.gg(xsim$x[,c(-6,-12)],groups,patterns=patterns,nclust=1,trace=FALSE)
+gg1 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='Gibbs',B=1000,trace=FALSE)
+gg2 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='MH',B=1000,trace=FALSE)
+gg3 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='SA',B=200,trace=FALSE)
+gg4 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='EM',trace=FALSE)  
 @ 
 
 We can obtain iteration plots to visually assess the convergence of the chain.
-The component \texttt{mcmc} of \texttt{ggfit} contains an object of
+The component \texttt{mcmc} of \texttt{gg1} contains an object of
 type \texttt{mcmc}, as defined in the library \texttt{coda}.
-Therefore, simply typing \texttt{plot(ggfit\$mcmc)} produces the
+Therefore, simply typing \texttt{plot(gg1\$mcmc)} produces the
 plots in Figure \ref{fig:fig3} (only first plot shown).
 For more formal convergence diagnostics, see the documentation of the library \texttt{coda}.
 We see that convergence was reached very quickly.
@@ -268,7 +301,7 @@ We see that convergence was reached very quickly.
 
 \setkeys{Gin}{width=0.8\textwidth} 
 <<label=fig3plot,include=FALSE>>=
-plot(ggfit$mcmc)
+plot(gg1$mcmc)
 @ 
 
 \begin{figure}
@@ -285,30 +318,31 @@ To obtain parameter estimates and the posterior probability that each gene
 is differentially expressed we use the function \texttt{parest}.
 We discard the first 100 MCMC iterations with \texttt{burnin=100},
 and we ask for 95\% posterior credibility intervals with \texttt{alpha=.05}.
-The slot \texttt{ci} of the returned object contains the credibility intervals.
-Note that they all include the true value.
+The slot \texttt{ci} of the returned object contains the credibility intervals
+(this option is only available for \texttt{method=='Gibbs'}
+and \texttt{method=='MH'}.
 
 <<five>>=
-ggfit <- parest(ggfit,x=xsim$x[,c(-6,-12)],groups,burnin=100,alpha=.05)
-ggfit
-ggfit$ci
+gg1 <- parest(gg1,x=x[,c(-6,-12)],groups,burnin=100,alpha=.05)
+gg2 <- parest(gg2,x=x[,c(-6,-12)],groups,burnin=100,alpha=.05)
+gg3 <- parest(gg3,x=x[,c(-6,-12)],groups,alpha=.05)
+gg4 <- parest(gg4,x=x[,c(-6,-12)],groups,alpha=.05)
+gg1
+gg1$ci
+gg2
+gg2$ci
+gg3
+gg4
 @
 
-As an alternative, one can estimate the hyper-parameters via
-maximum likelihood. This is achieved by specifying \texttt{method='EBayes'}
-when calling \texttt{fit.gg}.
-Fitting the model via maximum likelihood is usually quicker, and in our
-experience it delivers similar results to the Bayesian fit.
-
-<<six>>=
-ggfit.eb <- fit.gg(xsim$x[,c(-6,-12)],groups,patterns=patterns,method='EBayes')  
-ggfit.eb <- parest(ggfit.eb,x=xsim$x[,c(-6,-12)],groups,alpha=.05)
-ggfit.eb
-@
-
-The parameter estimates are indeed similar to those obtained
-from the fully Bayesian fit.
-The slot \texttt{pp} in \texttt{ggfit} and \texttt{ggfit.eb}
+Although the parameter estimates obtained from the four methods are similar to each
+other, some differences remain.
+This is due to some extent to our having a small dataset with only 100 genes.
+For the larger datasets encountered in practice the four methods typically
+deliver very similar results.
+In Section \ref{sec:degenes} we assess whether the lists of differentially
+expressed genes obtained with each method are actually the same.
+The slot \texttt{pp} in \texttt{gg1} and \texttt{gg4}
 contains a matrix with the posterior probability
 of each expression pattern for each gene.
 For example, the first gene has a posterior probability of 0.993
@@ -318,9 +352,9 @@ and a probability of 0.033 of following pattern 1
 Bayesian fit, and 0.034 under the maximum likelihood fit.
 
 <<seven>>=
-dim(ggfit$pp)
-ggfit$pp[1,]
-ggfit.eb$pp[1,]
+dim(gg1$pp)
+gg1$pp[1,]
+gg4$pp[1,]
 @
 
 \section{Checking the goodness of fit}
@@ -342,22 +376,22 @@ The figures were generated with the following code:
 
 \setkeys{Gin}{width=0.5\textwidth} 
 <<label=fig4aplot,include=FALSE>>=
- checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='data',main='')
+checkfit(gg1,x=x[,c(-6,-12)],groups,type='data',main='')
 @
 
 \setkeys{Gin}{width=0.5\textwidth} 
 <<label=fig4bplot,include=FALSE>>=
-checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='shape',main='')
+checkfit(gg1,x=x[,c(-6,-12)],groups,type='shape',main='')
 @
 
 \setkeys{Gin}{width=0.5\textwidth} 
 <<label=fig4cplot,include=FALSE>>=
-checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='mean',main='')
+checkfit(gg1,x=x[,c(-6,-12)],groups,type='mean',main='')
 @
 
 \setkeys{Gin}{width=0.5\textwidth} 
 <<label=fig4dplot,include=FALSE>>=
-checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='shapemean',main='',xlab='Mean',ylab='1/sqrt(CV)')
+checkfit(gg1,x=x[,c(-6,-12)],groups,type='shapemean',main='',xlab='Mean',ylab='1/sqrt(CV)')
 @
 
 
@@ -393,7 +427,7 @@ checkfit(ggfit,x=xsim$x[,c(-6,-12)],groups,type='shapemean',main='',xlab='Mean',
 It should be noted, however, that posterior-predictive plots can fail to detect
 departures from the model, since there is a double use of the data.
 Prior-predictive checks can be easily implemented using the function
-\texttt{sim.gg} and setting the hyper-parameters to their posterior mean.
+\texttt{simGG} and setting the hyper-parameters to their posterior mean.
 
 
 \section{Finding differentially expressed genes}
@@ -414,22 +448,20 @@ Here we explore both options, specifying \texttt{B=1000} permutations
 for the non-parametric option.
 
 <<eight>>=
-d <- findgenes(ggfit,xsim$x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
-d.nonpar <- findgenes(ggfit,xsim$x[,c(-6,-12)],groups,fdrmax=.05,parametric=FALSE,B=1000)
-dtrue <- (xsim$l[,1]!=xsim$l[,2])
-table(d$d,dtrue)
-table(d.nonpar$d,dtrue)
+d1 <- findgenes(gg1,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
+d1.nonpar <- findgenes(gg1,x[,c(-6,-12)],groups,fdrmax=.05,parametric=FALSE,B=1000)
+dtrue <- (l[,1]!=l[,2])
+table(d1$d,dtrue)
+table(d1.nonpar$d,dtrue)
 @
 
 We set the variable \texttt{dtrue} to indicate 
 which genes were actually differentially expressed
 (easily achieved by comparing the columns of \texttt{xsim\$l}).
-The parametric version declares 4 genes to be DE, all of them
-true positives. It fails to find one of the DE genes.
-The non-parametric lists 5 genes as DE, one of them being
-a false positive. It fails to find one of the DE genes.
+Both the parametric and non-parametric versions declare 4 genes to be DE, all of them
+true positives. They both fail to find one of the DE genes.
 To obtain an estimated frequentist FDR for each
-Bayesian FDR one can plot \texttt{d.nonpar\$fdrest}.
+Bayesian FDR one can plot \texttt{d1.nonpar\$fdrest}.
 The result, shown in Figure \ref{fig:fig4}, reveals
 that setting the Bayesian FDR at a 0.05 level results
 in an estimated frequentist FDR around 0.015.
@@ -439,7 +471,7 @@ procedure from a frequentist point of view.
 
 \setkeys{Gin}{width=0.5\textwidth} 
 <<label=fig5plot,include=FALSE>>=
-plot(d.nonpar$fdrest,type='l',xlab='Bayesian FDR',ylab='Estimated frequentist FDR')
+plot(d1.nonpar$fdrest,type='l',xlab='Bayesian FDR',ylab='Estimated frequentist FDR')
 @
 
 \begin{figure}
@@ -451,6 +483,25 @@ plot(d.nonpar$fdrest,type='l',xlab='Bayesian FDR',ylab='Estimated frequentist FD
 \caption{Estimated frequenstist FDR vs. Bayesian FDR}
 \label{fig:fig5}
 \end{figure}
+
+
+Finally, we compare the list of differentially expressed genes with those obtained
+when using the other fitting criteria explained in  Section \ref{sec:modelfit}.
+
+<<eightbis>>=
+d2 <- findgenes(gg2,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
+d3 <- findgenes(gg3,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
+d4 <- findgenes(gg4,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
+table(d1$d,d2$d)
+table(d1$d,d3$d)
+table(d1$d,d4$d)
+@
+
+Despite the existence of small differences in the hyper-parameter estimates
+between methods, the final list of
+differentially expressed genes is the same for all of them.
+This suggests that the GaGa model is somewhat robust to the hyper-parameter
+specification.
 
 \section{Class prediction}
 \label{sec:classpredict}
@@ -486,8 +537,8 @@ not observed in real datasets, where it is rare to have a gene
 with such a high discrimination power.
 
 <<nine>>=
-pred1 <- classpred(ggfit,xnew=xsim$x[,6],x=xsim$x[,c(-6,-12)],groups,ngene=50,prgroups=c(.5,.5))
-pred2 <- classpred(ggfit,xnew=xsim$x[,12],x=xsim$x[,c(-6,-12)],groups,ngene=50,prgroups=c(.5,.5))
+pred1 <- classpred(gg1,xnew=x[,6],x=x[,c(-6,-12)],groups,ngene=50,prgroups=c(.5,.5))
+pred2 <- classpred(gg1,xnew=x[,12],x=x[,c(-6,-12)],groups,ngene=50,prgroups=c(.5,.5))
 pred1
 pred2
 @

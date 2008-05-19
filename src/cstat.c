@@ -73,18 +73,6 @@ double wmeanx(double *x, int lim, double *w)
     return value;
 }
 
-/* Column means */
-void colMeans(double *m, double *x, int nrow, int ncol) {
-  //x is assumed to be in row order, that is x[0], x[1] ... x[ncol-1] are elem in 1st row
-  int i,j;
-  for (j=0; j<ncol; j++) { m[j]= 0; }
-  for (i=0; i<nrow; i++) {
-    for (j=0; j<ncol; j++) {
-      m[j] += x[i*ncol+j];
-    }
-  }
-  for (j=0; j<ncol; j++) { m[j]= m[j]/(nrow+.0); }
-}
 
 /* Sample variance of elements 0 through lim of vector x, unb=1 returns unbiased version */
 double vari(int *x, int lim, int unb) 
@@ -126,6 +114,110 @@ double wvarx(double *x, int lim, double *w)
     value = value/wtot - pow(wmeanx(x,lim,w),2);
     return value;
 }
+
+
+double cv(double *x, int ini, int fi) {
+  //Compute coefficient of variation of x[ini..fi]
+  int i; double m, s, ans;
+
+  for (i=ini, m=s=0; i<=fi; i++) {
+    m+= x[i];
+    s+= x[i]*x[i];
+  }
+  m= m/(1.0+fi-ini); 
+  s= s/(.0+fi-ini) - m*m*(1.0+fi-ini)/(.0+fi-ini);
+  ans= sqrt(s)/m;
+  return(ans);
+}
+
+
+double cvinv(double *x, int ini, int fi) {
+  //Compute coefficient of variation of x[ini..fi]
+  int i; double m, s, ans;
+
+  for (i=ini, m=s=0; i<=fi; i++) {
+    m+= 1.0/x[i];
+    s+= 1.0/(x[i]*x[i]);
+  }
+  m= m/(1.0+fi-ini); 
+  s= s/(.0+fi-ini) - m*m*(1.0+fi-ini)/(.0+fi-ini);
+  ans= sqrt(s)/m;
+  return(ans);
+}
+
+
+/* Column means */
+void colMeans(double *m, double *x, int nrow, int ncol) {
+  //x is assumed to be in row order, that is x[0], x[1] ... x[ncol-1] are elem in 1st row
+  int i,j;
+  for (j=0; j<ncol; j++) { m[j]= 0; }
+  for (i=0; i<nrow; i++) {
+    for (j=0; j<ncol; j++) {
+      m[j] += x[i*ncol+j];
+    }
+  }
+  for (j=0; j<ncol; j++) { m[j]= m[j]/(nrow+.0); }
+}
+
+void colVar(double *v, double *x, int nrow, int ncol) {
+  //x is assumed to be in row order, that is x[0], x[1] ... x[ncol-1] are elem in 1st row
+  int i,j; double *m, *m2;
+
+  m= dvector(0,ncol-1); m2= dvector(0,ncol-1);
+  for (j=0; j<ncol; j++) { m[j]= m2[j]= 0; }
+  for (i=0; i<nrow; i++) {
+    for (j=0; j<ncol; j++) {
+      m[j]+= x[i*ncol+j];
+      m2[j] += x[i*ncol+j]*x[i*ncol+j];
+    }
+  }
+  for (j=0; j<ncol; j++) { m[j]= m[j]/(.0+nrow); v[j]= m2[j]/(nrow-1.0) - m[j]*m[j]*(nrow+.0)/(nrow-1.0); }
+  free_dvector(m,0,ncol-1); free_dvector(m2,0,ncol-1);
+
+}
+
+
+void colCV(double *cv, double *x, int nrow, int ncol) {
+  //x is assumed to be in row order, that is x[0], x[1] ... x[ncol-1] are elem in 1st row
+  int i,j; double *m, *s;
+  m= dvector(0,ncol); s= dvector(0,ncol);
+  for (j=0; j<ncol; j++) { m[j]= s[j]= 0; }
+  for (i=0; i<nrow; i++) {
+    for (j=0; j<ncol; j++) {
+      m[j] += x[i*ncol+j];
+      s[j] += x[i*ncol+j]*x[i*ncol+j];
+    }
+  }
+  for (j=0; j<ncol; j++) { 
+    m[j]= m[j]/(nrow+.0); 
+    s[j]= s[j]/(nrow-1.0) - m[j]*m[j]*(nrow+.0)/(nrow-1.0);
+    cv[j]= sqrt(s[j])/m[j];
+  }
+  free_dvector(m,0,ncol); free_dvector(s,0,ncol);
+}
+
+
+void colCVinv(double *cv, double *x, int nrow, int ncol) {
+  //x is assumed to be in row order, that is x[0], x[1] ... x[ncol-1] are elem in 1st row
+  int i,j; double *m, *s;
+  m= dvector(0,ncol); s= dvector(0,ncol);
+  for (j=0; j<ncol; j++) { m[j]= s[j]= 0; }
+  for (i=0; i<nrow; i++) {
+    for (j=0; j<ncol; j++) {
+      m[j] += 1.0/x[i*ncol+j];
+      s[j] += 1.0/(x[i*ncol+j]*x[i*ncol+j]);
+    }
+  }
+  for (j=0; j<ncol; j++) { 
+    m[j]= m[j]/(nrow+.0); 
+    s[j]= s[j]/(nrow-1.0) - m[j]*m[j]*(nrow+.0)/(nrow-1.0);
+    cv[j]= sqrt(s[j])/m[j];
+  }
+  free_dvector(m,0,ncol); free_dvector(s,0,ncol);
+}
+
+
+
 
 /************************************************************************
                          BASIC BAYESIAN MODELS
@@ -1090,6 +1182,10 @@ double betacf(double a, double b, double x) {
   return(h);
 }
 
+double logit(double x) { return(log(x/(1-x))); }
+
+double ilogit(double x) { return(1.0/(1.0+exp(-x))); }
+
 
 
 /************************************************************************
@@ -1716,6 +1812,19 @@ void rdirichlet(double *w, double *alpha, int *p)
   if (W < 0) printf("\n\n **** non-pos dirich gen!! **\n"); 
 } 
 
+
+double ddirichlet(double *w, double *alpha, int *p) {
+ //Evaluates Dirichlet density at w (alpha: params; p: dimensionality of w and alpha)
+  int i; double ans, sumalpha;
+
+  for (i=0, ans=0, sumalpha=0; i< *p; i++) {
+    ans+= (alpha[i]-1)*log(w[i]) - gamln(alpha+i);
+    sumalpha+= alpha[i];
+  }
+  ans+= gamln(&sumalpha);
+  return(exp(ans));
+}
+
 double gamdev(double alpha) 
 { 
   double  
@@ -2100,6 +2209,15 @@ double dgammaC(double x, double a, double b) {
     return(exp(a*log(b)-gamln(&a)+(a-1)*log(x)-x*b)); 
   } else {
     if (a==1) return(b); else return(0);
+  }
+}
+
+double dinvgammaC(double x, double a, double b) {
+ //Density of an Inverse Gamma(a,b) (a: shape; b: location; mean of 1/x= a/b)
+  if (x!=0) { 
+    return(exp(a*log(b)-gamln(&a)-(a+1)*log(x)-b/x)); 
+  } else {
+    return(0);
   }
 }
 

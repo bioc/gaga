@@ -1,7 +1,7 @@
 findgenes.gagafit <- function(gg.fit,x,groups,fdrmax=.05,parametric=TRUE,B=500) {
 # Computes optimal terminal decision rules and expected terminal utility for several utility functions
 # Input:
-# - x: matrix or ExpressionSet gene expression data
+# - x: matrix or exprSet gene expression data
 # - groups: vector indicating to which group does each column of x belong to
 # - gg.fit: GaGa or MiGaGa fit, as returned by parest.gagafit
 # - fdrmax: restriction on E(FDR). Ignored if util!='fnrstfdr'.
@@ -25,10 +25,10 @@ centers <- 1; v <- gg.fit$pp
 if (!is.matrix(v)) stop('gg.fit$pp must be a matrix containing posterior probabilities of each expression pattern')
 cf <- as.double(2)
 
-if (is(x,"ExpressionSet")) {
+if (is(x, "exprSet") | is(x,"ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
   x <- exprs(x)
-} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, data.frame or matrix") }
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
 
 groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
 if (length(groups) != ncol(x)) stop('groups must have length equal to the number of columns in x')
@@ -42,8 +42,13 @@ a0 <- as.double(par$a0); nu <- as.double(par$nu); balpha <- as.double(par$balpha
 cluslist <- as.integer(c((0:(length(probclus)-1)),-1))
 if (B<10) { warning('B was set to less than 10, too small a number of permutations. Increased to B=10'); B <- 10 }
 
-sumx <- double(nrow(x)*sum(ngrouppat)); prodx <- double(nrow(x)*sum(ngrouppat)); nobsx <- double(sum(ngrouppat))
-sumxpred <- double(nrow(x)*sum(ngrouppat)); prodxpred <- double(nrow(x)*sum(ngrouppat)); nobsxpred <- double(sum(ngrouppat))
+sumx <- double(nrow(x)*sum(ngrouppat)); nobsx <- double(sum(ngrouppat))
+sumxpred <- double(nrow(x)*sum(ngrouppat)); nobsxpred <- double(sum(ngrouppat))
+if (gg.fit$equalcv) {
+  prodx <- prodxpred <- double(nrow(x))
+} else {
+  prodx <- prodxpred <- double(nrow(x)*sum(ngrouppat))
+}
 gapprox <- 1
 
 nsel <- nrow(v); sel <- as.integer((1:nsel)-1)
@@ -71,7 +76,7 @@ if (parametric==FALSE) {
   znclust <- as.integer(centers); niter <- 10
 
   cat("Done\nStarting",B,"bootstrap iterations...\n")
-  znp <- .C("expected_fp",efp=fdrest,fdrseq,as.integer(length(fdrseq)),as.integer(B),as.integer(niter),as.double(t(zscore)),as.double(m),as.double(s),index,znclust,zclustsize,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groups),as.integer(ncol(patterns)),as.double(a0),as.double(nu),as.double(balpha),as.double(nualpha),as.integer(length(probclus)),cluslist,as.double(t(probclus)),as.double(t(probpat)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,as.integer(gapprox))
+  znp <- .C("expected_fp",efp=fdrest,fdrseq,as.integer(length(fdrseq)),as.integer(B),as.integer(niter),as.double(t(zscore)),as.double(m),as.double(s),index,znclust,zclustsize,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groups),as.integer(ncol(patterns)),as.double(a0),as.double(nu),as.double(balpha),as.double(nualpha),as.integer(gg.fit$equalcv),as.integer(length(probclus)),cluslist,as.double(t(probclus)),as.double(t(probpat)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,as.integer(gapprox))
   fdrest <- znp$efp
   fdrpar <- fdrseq[abs(fdrest-fdrmax)==min(abs(fdrest-fdrmax))][1]
   fdr <- fdrest[abs(fdrest-fdrmax)==min(abs(fdrest-fdrmax))][1]

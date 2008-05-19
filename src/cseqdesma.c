@@ -458,7 +458,7 @@ void euCsearch(double *bopt, double *uopt, double *fdropt, double *fnropt, doubl
 
 
 
-void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, double *power, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *util, double *cf, double *cf_sam, int *genelimit, double *v0thre, int *nrow, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha,  int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *fdrmax, int *gapprox) {
+void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, double *power, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *util, double *cf, double *cf_sam, int *genelimit, double *v0thre, int *nrow, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *fdrmax, int *gapprox) {
 
 /* Performs forward simulations for the gene classification problem using a Gamma/Gamma model */
 
@@ -496,11 +496,17 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
    - K: number of groups e.g. group 0 for control, group 1 for type A cancer, group 2 for type B cancer
 
-   - alpha: estimate for alpha parameter in Gamma/Gamma model (shape parameter for observation component)
+   - alpha0,nu: prior for lambda is Gamma(alpha0,nu)
 
-   - alpha0: estimate for alpha0 parameter in Gamma/Gamma model (shape parameter for hyper-prior)
+   - balpha,nualpha: prior for alpha is Gamma(balpha,nualpha)
 
-   - nu: estimate for nu parameter in Gamma/Gamma model (location parameter for hyper-prior)
+   - equalcv: set to 1 to indicate constant CV across groups, 0 otherwise
+
+   - nclust: number of clusters in hyper-prior for (alpha,lambda)
+
+   - cluslist: list of clusters to be taken into account when computing post prob. This option can be used to exclude clusters with very small probabilities
+
+   - rho: mixing probabilities for clusters in hyper-prior for (alpha,lambda)
 
    - prob: vector with estimated probability of each expression pattern (length *npat)
 
@@ -558,11 +564,21 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
   sumx= dvector(0, (*nrow)*ncolsumx); sumxpred= dvector(0, (*nrow)*ncolsumx); sumxtot= dvector(0, (*nrow)*ncolsumx);
 
-  prodx= dvector(0, (*nrow)*ncolsumx); prodxpred= dvector(0, (*nrow)*ncolsumx); prodxtot= dvector(0, (*nrow)*ncolsumx);
+  if (*equalcv == 1) {
+
+    prodx= dvector(0, (*nrow)); prodxpred= dvector(0, (*nrow)); prodxtot= dvector(0, (*nrow));
+
+  } else {
+
+    prodx= dvector(0, (*nrow)*ncolsumx); prodxpred= dvector(0, (*nrow)*ncolsumx); prodxtot= dvector(0, (*nrow)*ncolsumx);
+
+  }
 
   nobsx= dvector(0, ncolsumx); nobsxpred= dvector(0, ncolsumx); nobsxtot= dvector(0, ncolsumx);
 
-  xpred= dvector(0,(*nrow)*ncolxpred); dpred= ivector(0, *nrow); apred= dvector(0, (*nrow)*(*K)); lpred= dvector(0, (*nrow)*(*K));
+  xpred= dvector(0,(*nrow)*ncolxpred); dpred= ivector(0, *nrow); lpred= dvector(0, (*nrow)*(*K));
+
+  if (*equalcv == 1) apred= dvector(0,*nrow); else apred= dvector(0,(*nrow)*(*K));
 
   v= dvector(0, (*nrow)*(*npat)); vpred= dvector(0, (*nrow)*(*npat));
 
@@ -578,13 +594,13 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
   for (i=0; i<(*nrow); i++) { sel[i]= i; }
 
-  compute_sumxC(sumx,prodx,nobsx,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
+  compute_sumxC(sumx,prodx,nobsx,equalcv,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
 
   for (i=0; i<(*nclust); i++) { cluslist[i]= i; }
 
   cluslist[*nclust]= -1;
 
-  pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&zero,gapprox);
+  pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&zero,gapprox);
 
 
 
@@ -600,7 +616,7 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
     uselpred= 0; init0= 1;
 
-    copy_sumxC(sumxtot,prodxtot,nobsxtot,&nsel,sel,&ncolsumx,sumx,prodx,nobsx); //copy contents of sumx, nobsx into sumxtot, nobsxtot
+    copy_sumxC(sumxtot,prodxtot,nobsxtot,equalcv,&nsel,sel,&ncolsumx,sumx,prodx,nobsx); //copy contents of sumx, nobsx into sumxtot, nobsxtot
 
 
 
@@ -608,15 +624,15 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
     for (j=0; j<((*J)-(*Jini)); j++) {
 
-      simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+      simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
 
-      compute_sumxC(sumxpred,prodxpred,nobsxpred,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&init0);
+      compute_sumxC(sumxpred,prodxpred,nobsxpred,equalcv,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&init0);
 
-      compute_sumxC(sumxtot,prodxtot,nobsxtot,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&zero);
+      compute_sumxC(sumxtot,prodxtot,nobsxtot,equalcv,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&zero);
 
       uselpred= 1; init0= 0;
 
-      pp_ggC(vpred,&lhood,&nsel,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
+      pp_ggC(vpred,&lhood,&nsel,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
 
       //Optimal terminal decision and expected utility
 
@@ -632,7 +648,7 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
 	  deltat= (*mpred)*(k+1);
 
-	  utgene_predC(m+k,s+k,&deltat,Bsummary,&preceps,util,cf,genelimit,v0thre,&nsel,sel,&one,nrow,ncol,x,groups,K,vpred,alpha0,nu,balpha,nualpha,nclust,rho,prob,npat,patterns,ngrouppat,fdrmax,sumxtot,prodxtot,nobsxtot,&one,gapprox);
+	  utgene_predC(m+k,s+k,&deltat,Bsummary,&preceps,util,cf,genelimit,v0thre,&nsel,sel,&one,nrow,ncol,x,groups,K,vpred,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,prob,npat,patterns,ngrouppat,fdrmax,sumxtot,prodxtot,nobsxtot,&one,gapprox);
 
           m[k]= m[k] - uobs - (k+1)*(*cf_sam)*((*util)!=1);   //for util!=1 substract sampling cost
 
@@ -678,11 +694,23 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
   free_dvector(sumx,0,(*nrow)*ncolsumx); free_dvector(sumxpred,0,(*nrow)*ncolsumx); free_dvector(sumxtot,0,(*nrow)*ncolsumx);
 
-  free_dvector(prodx,0,(*nrow)*ncolsumx); free_dvector(prodxpred,0,(*nrow)*ncolsumx); free_dvector(prodxtot,0,(*nrow)*ncolsumx);
+  if (*equalcv == 1) {
+
+    free_dvector(prodx,0,(*nrow)); free_dvector(prodxpred,0,(*nrow)); free_dvector(prodxtot,0,(*nrow));
+
+  } else {
+
+    free_dvector(prodx,0,(*nrow)*ncolsumx); free_dvector(prodxpred,0,(*nrow)*ncolsumx); free_dvector(prodxtot,0,(*nrow)*ncolsumx);
+
+  }
 
   free_dvector(nobsx,0,ncolsumx); free_dvector(nobsxpred,0,ncolsumx); free_dvector(nobsxtot,0,ncolsumx);
 
-  free_dvector(xpred,0,(*nrow)*ncolxpred); free_ivector(dpred,0,*nrow); free_dvector(apred,0,(*nrow)*(*K)); free_dvector(lpred,0,(*nrow)*(*K));
+  free_dvector(xpred,0,(*nrow)*ncolxpred); free_ivector(dpred,0,*nrow); free_dvector(lpred,0,(*nrow)*(*K));
+
+  if (*equalcv == 1) free_dvector(apred,0,*nrow); else free_dvector(apred,0,(*nrow)*(*K));
+
+
 
   free_dvector(v,0,(*nrow)*(*npat)); free_dvector(vpred,0,(*nrow)*(*npat));
 
@@ -700,7 +728,7 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
 
 
-void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *genelimit, double *v0thre, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, int *gapprox) {
+void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *genelimit, double *v0thre, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, int *gapprox) {
 
 /* Performs forward simulations for the sample classification problem using a Gamma/Gamma model */
 
@@ -734,11 +762,17 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
    - Kprob: vector with prior probabilities for each group
 
-   - alpha0: estimate for alpha0 parameter in Gamma/Gamma model (shape parameter for hyper-prior)
+   - alpha0,nu: prior for lambda is Gamma(alpha0,nu)
 
-   - nu: estimate for nu parameter in Gamma/Gamma model (location parameter for hyper-prior)
+   - balpha,nualpha: prior for alpha is Gamma(balpha,nualpha)
 
-   - balpha: estimate for b parameter in hyper-prior for alpha
+   - equalcv: set to 1 to indicate constant CV across groups, 0 otherwise
+
+   - nclust: number of clusters in hyper-prior for (alpha,lambda)
+
+   - cluslist: list of clusters to be taken into account when computing post prob. This option can be used to exclude clusters with very small probabilities
+
+   - rho: mixing probabilities for clusters in hyper-prior for (alpha,lambda)
 
    - prob: vector with estimated probability of each expression pattern (length *npat)
 
@@ -792,11 +826,21 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
   sumx= dvector(0, (*nrow)*ncolsumx); sumxpred= dvector(0, (*nrow)*ncolsumx); sumxtot= dvector(0, (*nrow)*ncolsumx);
 
-  prodx= dvector(0, (*nrow)*ncolsumx); prodxpred= dvector(0, (*nrow)*ncolsumx); prodxtot= dvector(0, (*nrow)*ncolsumx);
+  if (*equalcv == 1) {
+
+    prodx= dvector(0, (*nrow)); prodxpred= dvector(0, (*nrow)); prodxtot= dvector(0, (*nrow));
+
+  } else {
+
+    prodx= dvector(0, (*nrow)*ncolsumx); prodxpred= dvector(0, (*nrow)*ncolsumx); prodxtot= dvector(0, (*nrow)*ncolsumx);
+
+  }
 
   nobsx= dvector(0, ncolsumx); nobsxpred= dvector(0, ncolsumx); nobsxtot= dvector(0, ncolsumx);
 
-  xpred= dvector(0,(*nrow)*ncolxpred); dpred= ivector(0, *nrow); apred= dvector(0, (*nrow)*(*K)); lpred= dvector(0, (*nrow)*(*K));
+  xpred= dvector(0,(*nrow)*ncolxpred); dpred= ivector(0, *nrow); lpred= dvector(0, (*nrow)*(*K));
+
+  if (*equalcv == 1) apred= dvector(0,*nrow); else apred= dvector(0,(*nrow)*(*K));
 
   v= dvector(0, (*nrow)*(*npat)); vpred= dvector(0, (*nrow)*(*npat));
 
@@ -816,13 +860,13 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
   for (i=0; i<(*nrow); i++) { sel[i]= i; }
 
-  compute_sumxC(sumx,prodx,nobsx, nrow,sel,&ncolsumx, ncol, x, groups, K, npat, patterns, ngrouppat, &one);
+  compute_sumxC(sumx,prodx,nobsx,equalcv,nrow,sel,&ncolsumx, ncol, x, groups, K, npat, patterns, ngrouppat, &one);
 
   for (i=0; i<(*nclust); i++) { cluslist[i]= i; }
 
   cluslist[*nclust]= -1;
 
-  pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&zero,gapprox);
+  pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&zero,gapprox);
 
 
 
@@ -838,7 +882,7 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
     uselpred= 0; init0= 1;
 
-    copy_sumxC(sumxtot,prodxtot,nobsxtot,&nsel,sel,&ncolsumx,sumx,prodx,nobsx); //copy contents of sumx, nobsx into sumxtot, nobsxtot
+    copy_sumxC(sumxtot,prodxtot,nobsxtot,equalcv,&nsel,sel,&ncolsumx,sumx,prodx,nobsx); //copy contents of sumx, nobsx into sumxtot, nobsxtot
 
 
 
@@ -846,21 +890,21 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
     for (j=0; j<((*J)-(*Jini)); j++) {
 
-      simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+      simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
 
-      compute_sumxC(sumxpred,prodxpred,nobsxpred,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&init0);
+      compute_sumxC(sumxpred,prodxpred,nobsxpred,equalcv,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&init0);
 
-      compute_sumxC(sumxtot,prodxtot,nobsxtot,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&zero);
+      compute_sumxC(sumxtot,prodxtot,nobsxtot,equalcv,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&zero);
 
       uselpred= 1; init0= 0;
 
-      pp_ggC(vpred,&lhood,&nsel,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
+      pp_ggC(vpred,&lhood,&nsel,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
 
 
 
       //Prob. of correct classification if we were to stop collecting data at this time
 
-      utsample_ggC(&uobs,&seobs,ccobs,ngroup,Bsummary,&preceps,genelimit,v0thre,&nsel,sel,&one,nrow,&ncolxpred,xpred,groupspred,vpred,K,Kprob,alpha0,nu,balpha,nualpha,nclust,rho,prob,npat,patterns,ngrouppat,&ncolsumx,sumxtot,prodxtot,nobsxtot,&one,gapprox);
+      utsample_ggC(&uobs,&seobs,ccobs,ngroup,Bsummary,&preceps,genelimit,v0thre,&nsel,sel,&one,nrow,&ncolxpred,xpred,groupspred,vpred,K,Kprob,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,prob,npat,patterns,ngrouppat,&ncolsumx,sumxtot,prodxtot,nobsxtot,&one,gapprox);
 
 
 
@@ -872,7 +916,7 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
 	  deltat= (*mpred)*(k+1);
 
-	  utsample_predC(m+k,&sepred,ccpred,nccpred,&deltat,Bsummary,&preceps,genelimit,v0thre,&nsel,sel,&one,nrow,ncol,x,groups,K,Kprob,vpred,alpha0,nu,balpha,nualpha,nclust,rho,prob,npat,patterns,ngrouppat,sumxtot,prodxtot,nobsxtot,&one,gapprox);
+	  utsample_predC(m+k,&sepred,ccpred,nccpred,&deltat,Bsummary,&preceps,genelimit,v0thre,&nsel,sel,&one,nrow,ncol,x,groups,K,Kprob,vpred,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,prob,npat,patterns,ngrouppat,sumxtot,prodxtot,nobsxtot,&one,gapprox);
 
           m[k]= m[k] - uobs;
 
@@ -910,11 +954,23 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
   free_dvector(sumx,0,(*nrow)*ncolsumx); free_dvector(sumxpred,0,(*nrow)*ncolsumx); free_dvector(sumxtot,0,(*nrow)*ncolsumx);
 
-  free_dvector(prodx,0,(*nrow)*ncolsumx); free_dvector(prodxpred,0,(*nrow)*ncolsumx); free_dvector(prodxtot,0,(*nrow)*ncolsumx);
+  if (*equalcv == 1) {
+
+    free_dvector(prodx,0,(*nrow)); free_dvector(prodxpred,0,(*nrow)); free_dvector(prodxtot,0,(*nrow));
+
+  } else {
+
+    free_dvector(prodx,0,(*nrow)*ncolsumx); free_dvector(prodxpred,0,(*nrow)*ncolsumx); free_dvector(prodxtot,0,(*nrow)*ncolsumx);
+
+  }
 
   free_dvector(nobsx,0,ncolsumx); free_dvector(nobsxpred,0,ncolsumx); free_dvector(nobsxtot,0,ncolsumx);
 
-  free_dvector(xpred,0,(*nrow)*ncolxpred); free_ivector(dpred,0,*nrow); free_dvector(apred,0,(*nrow)*(*K)); free_dvector(lpred,0,(*nrow)*(*K));
+  free_dvector(xpred,0,(*nrow)*ncolxpred); free_ivector(dpred,0,*nrow); free_dvector(lpred,0,(*nrow)*(*K));
+
+  if (*equalcv == 1) free_dvector(apred,0,*nrow); else free_dvector(apred,0,(*nrow)*(*K));
+
+
 
   free_dvector(v,0,(*nrow)*(*npat)); free_dvector(vpred,0,(*nrow)*(*npat));
 
@@ -942,9 +998,179 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
 
 
-void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  double *rho, double *prob, double *lhood, int *B, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, double *alpha0ini, double *nuini, double *balphaini, double *nualphaini, double *rhoini, double *probini, int *nrow, int *ncol, double *x, int *groups, int *K, int *nclust, int *npat, int *patterns, int *ngrouppat, int *gapprox, int *trace) {
+void initpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  double *rho, double *prob, double *lhood, int *B, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, double *alpha0ini, double *nuini, double *balphaini, double *nualphaini, double *rhoini, double *probini, int *nrow, int *ncol, double *x, int *groups, int *K, int *equalcv, int *nclust, int *npat, int *patterns, int *ngrouppat, int *gapprox, int *trace) {
 
-/* Fits Generalized Gamma/Gamma model via MCMC posterior simulation */
+/* Refines initial parameter estimates for GaGa model by iteratively computing:
+
+   (i) Posterior expectation of (balpha,nualpha,alpha0,nu) given probpat, probclus and the data
+
+   (ii) Posterior expectation of probpat given (balpha,nualpha,alpha0,nu), probclus and the data
+
+   (iii) Posterior expectatin of probclus given (balpha,nualpha,alpha0,nu), probpat and the data
+
+   INPUT: as in fit_ggC. *B indicates number of MCMC iterations
+
+*/
+
+  int i, j, ncolsumx, one=1, *sel, B10, *cluslist, settomean=1;
+
+  double *sumx, *prodx, *nobsx, *sumxpred, *prodxpred, *nobsxpred, *sumd, *sumci, *sumalpha, *sumlogalpha, *suminvlambda, *sumlambda, *sumloglambda, *v, *ngroupstot;
+
+
+
+  cluslist= ivector(0,*nclust);
+
+  sumalpha= dvector(0,*nclust); sumlogalpha= dvector(0,*nclust);
+
+  suminvlambda= dvector(0,*nclust); sumlambda= dvector(0,*nclust); sumloglambda= dvector(0,*nclust);
+
+  ngroupstot= dvector(0,*nclust);
+
+
+
+  //Pre-compute sufficient statistics
+
+  sel= ivector(0,*nrow);
+
+  for (i=0; i<(*nrow); i++) { sel[i]= i; }
+
+  for (i=0, ncolsumx=0; i<*npat; i++) { ncolsumx += ngrouppat[i]; }
+
+  sumx= dvector(0,(*nrow)*ncolsumx); nobsx= dvector(0,ncolsumx);
+
+  sumxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
+
+  if (*equalcv == 1) {
+
+    prodx= dvector(0,(*nrow));
+
+    prodxpred= dvector(0,(*nrow));
+
+    for (i=0; i<(*nrow)*ncolsumx; i++) { sumxpred[i]= 0; }
+
+    for (i=0; i<(*nrow); i++) { prodxpred[i]= 0; }
+
+  } else {
+
+    prodx= dvector(0,(*nrow)*ncolsumx);
+
+    prodxpred= dvector(0,(*nrow)*ncolsumx);
+
+    for (i=0; i<(*nrow)*ncolsumx; i++) { sumxpred[i]= prodxpred[i]= 0; }
+
+  }
+
+  for (i=0; i<ncolsumx; i++) { nobsxpred[i]= 0; }
+
+  compute_sumxC(sumx,prodx,nobsx,equalcv,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
+
+
+
+  //MCMC
+
+  for (i=0; i<(*nclust); i++) { cluslist[i]= i; }
+
+  cluslist[*nclust]= -1;
+
+  v= dvector(0,(*nrow)*(*npat));
+
+  sumd= dvector(0,*npat); sumci= dvector(0,*nclust);
+
+  balpha[0]= balphaini[0]; nualpha[0]= nualphaini[0];
+
+  for (i=0; i<*nclust; i++) { alpha0[i]= alpha0ini[i]; nu[i]= nuini[i]; }
+
+  for (i=0; i<*npat; i++) { prob[i]= probini[i]; }
+
+  for (i=0; i<*nclust; i++) { rho[i]= rhoini[i]; }
+
+  for (i=1; (i<*B); i++) {
+
+    pp_ggC(v,lhood+i-1,nrow,sel,ncol,x,groups,K,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,equalcv,nclust,cluslist,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
+
+    simpar_ggC(ngroupstot,sumd,sumci,sumalpha,sumlogalpha,suminvlambda,sumlambda,sumloglambda,groups,K,nrow,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,equalcv,nclust,rho+(i-1)*(*nclust),v,npat,patterns,ngrouppat,sumx,prodx,nobsx,gapprox);
+
+    simhyperpar_ggC(alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,nclust,rho+i*(*nclust),prob+i*(*npat),cluslist,equalcv,a_alpha0,b_alpha0,a_nu,b_nu,a_balpha,b_balpha,a_nualpha,b_nualpha,p_rho,p_prob,nrow,sumd,sumci,ngroupstot,sumalpha,sumlogalpha,suminvlambda,sumlambda,sumloglambda,npat,ngrouppat,gapprox,&settomean);
+
+
+
+    if ((*trace==1) && (i>1)) {
+
+      for (j=0; j<*nclust; j++) printf("%.6f ",alpha0[(i-1)*(*nclust)+j]);
+
+      for (j=0; j<*nclust; j++) printf("%.6f ",nu[(i-1)*(*nclust)+j]);
+
+      printf("%.6f %.6f ",balpha[0],nualpha[0]);
+
+      for (j=0; j<*npat; j++) printf("%.6f ",prob[(i-1)*(*npat)+j]);
+
+      for (j=0; j<*nclust; j++) printf("%.6f ",rho[(i-1)*(*nclust)+j]);
+
+      printf("%.6f",lhood[i-1]);
+
+      printf("\n");
+
+    }
+
+  }
+
+  pp_ggC(v,lhood+i-1,nrow,sel,ncol,x,groups,K,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,equalcv,nclust,cluslist,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //compute log-likelihood at last iteration
+
+
+
+  for (j=0; j<*nclust; j++) printf("%.6f ",alpha0[(i-1)*(*nclust)+j]);
+
+  for (j=0; j<*nclust; j++) printf("%.6f ",nu[(i-1)*(*nclust)+j]);
+
+  printf("%.6f %.6f ",balpha[0],nualpha[0]);
+
+  for (j=0; j<*npat; j++) printf("%.6f ",prob[(i-1)*(*npat)+j]);
+
+  for (j=0; j<*nclust; j++) printf("%.6f ",rho[(i-1)*(*nclust)+j]);
+
+  printf("%.6f \n",lhood[i-1]);
+
+
+
+  free_ivector(sel,0,*nrow);
+
+  free_dvector(sumd,0,*npat); free_dvector(sumci,0,*nclust); free_dvector(v,0,(*nrow)*(*npat));
+
+  free_dvector(sumx,0,(*nrow)*ncolsumx); free_dvector(nobsx,0,ncolsumx);
+
+  free_dvector(sumxpred,0,(*nrow)*ncolsumx);  free_dvector(nobsxpred,0,ncolsumx);
+
+  if (*equalcv == 1) {
+
+    free_dvector(prodx,0,(*nrow));
+
+    free_dvector(prodxpred,0,(*nrow));
+
+  } else {
+
+    free_dvector(prodx,0,(*nrow)*ncolsumx);
+
+    free_dvector(prodxpred,0,(*nrow)*ncolsumx);
+
+  }
+
+
+
+  free_ivector(cluslist,0,*nclust);
+
+  free_dvector(sumalpha,0,*nclust); free_dvector(sumlogalpha,0,*nclust);
+
+  free_dvector(suminvlambda,0,*nclust); free_dvector(sumlambda,0,*nclust); 
+
+  free_dvector(sumloglambda,0,*nclust); free_dvector(ngroupstot,0,*nclust);
+
+}
+
+
+
+void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  double *rho, double *prob, double *lhood, int *B, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, double *alpha0ini, double *nuini, double *balphaini, double *nualphaini, double *rhoini, double *probini, int *nrow, int *ncol, double *x, int *groups, int *K, int *equalcv, int *nclust, int *npat, int *patterns, int *ngrouppat, int *gapprox, int *trace) {
+
+/* Fits GaGa model via Gibbs' sampling */
 
 /* Input
 
@@ -984,6 +1210,10 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
    - K: number of groups e.g. group 0 for control, group 1 for type A cancer, group 2 for type B cancer
 
+   - equalcv: set to 1 to indicate constant CV across groups, 0 otherwise
+
+   - nclust:
+
    - npat: number of patterns e.g. number of hypothesis regarding the mean expression levels.
 
    - patterns: matrix indicating which groups are put together under each pattern (*npat rows, K cols).
@@ -1014,7 +1244,7 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
 
 
-  int i, ncolsumx, one=1, *sel, B10, *cluslist;
+  int i, ncolsumx, one=1, *sel, B10, *cluslist, settomean=0;
 
   double *sumx, *prodx, *nobsx, *sumxpred, *prodxpred, *nobsxpred, *sumd, *sumci, *sumalpha, *sumlogalpha, *suminvlambda, *sumlambda, *sumloglambda, *v, *ngroupstot;
 
@@ -1040,15 +1270,33 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
   for (i=0, ncolsumx=0; i<*npat; i++) { ncolsumx += ngrouppat[i]; }
 
-  sumx= dvector(0,(*nrow)*ncolsumx); prodx= dvector(0,(*nrow)*ncolsumx); nobsx= dvector(0,ncolsumx);
+  sumx= dvector(0,(*nrow)*ncolsumx); nobsx= dvector(0,ncolsumx);
 
-  sumxpred= dvector(0,(*nrow)*ncolsumx); prodxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
+  sumxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
 
-  for (i=0; i<(*nrow)*ncolsumx; i++) { sumxpred[i]= prodxpred[i]= 0; }
+  if (*equalcv == 1) {
+
+    prodx= dvector(0,(*nrow));
+
+    prodxpred= dvector(0,(*nrow));
+
+    for (i=0; i<(*nrow)*ncolsumx; i++) { sumxpred[i]= 0; }
+
+    for (i=0; i<(*nrow); i++) { prodxpred[i]= 0; }
+
+  } else {
+
+    prodx= dvector(0,(*nrow)*ncolsumx);
+
+    prodxpred= dvector(0,(*nrow)*ncolsumx);
+
+    for (i=0; i<(*nrow)*ncolsumx; i++) { sumxpred[i]= prodxpred[i]= 0; }
+
+  }
 
   for (i=0; i<ncolsumx; i++) { nobsxpred[i]= 0; }
 
-  compute_sumxC(sumx,prodx,nobsx,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
+  compute_sumxC(sumx,prodx,nobsx,equalcv,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
 
 
 
@@ -1070,19 +1318,21 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
   for (i=0; i<*nclust; i++) { rho[i]= rhoini[i]; }
 
+  if ((*trace) ==1) printf("Starting Gibbs sampler... \n");
+
   for (i=1, B10=(*B)/10; i<*B; i++) {
 
-    pp_ggC(v,lhood+i-1,nrow,sel,ncol,x,groups,K,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,nclust,cluslist,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
+    pp_ggC(v,lhood+i-1,nrow,sel,ncol,x,groups,K,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,equalcv,nclust,cluslist,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
 
-    simpar_ggC(ngroupstot,sumd,sumci,sumalpha,sumlogalpha,suminvlambda,sumlambda,sumloglambda,groups,K,nrow,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,nclust,rho+(i-1)*(*nclust),v,npat,patterns,ngrouppat,sumx,prodx,nobsx,gapprox);
+    simpar_ggC(ngroupstot,sumd,sumci,sumalpha,sumlogalpha,suminvlambda,sumlambda,sumloglambda,groups,K,nrow,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,equalcv,nclust,rho+(i-1)*(*nclust),v,npat,patterns,ngrouppat,sumx,prodx,nobsx,gapprox);
 
-    simhyperpar_ggC(alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,nclust,rho+i*(*nclust),prob+i*(*npat),cluslist,a_alpha0,b_alpha0,a_nu,b_nu,a_balpha,b_balpha,a_nualpha,b_nualpha,p_rho,p_prob,nrow,sumd,sumci,ngroupstot,sumalpha,sumlogalpha,suminvlambda,sumlambda,sumloglambda,npat,ngrouppat,gapprox);
+    simhyperpar_ggC(alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,nclust,rho+i*(*nclust),prob+i*(*npat),cluslist,equalcv,a_alpha0,b_alpha0,a_nu,b_nu,a_balpha,b_balpha,a_nualpha,b_nualpha,p_rho,p_prob,nrow,sumd,sumci,ngroupstot,sumalpha,sumlogalpha,suminvlambda,sumlambda,sumloglambda,npat,ngrouppat,gapprox,&settomean);
 
-    if ((*trace==1) && ((i % B10)==0)) printf("%d iterations \n",i);
+    if ((*trace==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
 
   }
 
-  pp_ggC(v,lhood+i-1,nrow,sel,ncol,x,groups,K,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,nclust,cluslist,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //compute log-likelihood at last iteration
+  pp_ggC(v,lhood+i-1,nrow,sel,ncol,x,groups,K,alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,equalcv,nclust,cluslist,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //compute log-likelihood at last iteration
 
 
 
@@ -1090,9 +1340,23 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
   free_dvector(sumd,0,*npat); free_dvector(sumci,0,*nclust); free_dvector(v,0,(*nrow)*(*npat));
 
-  free_dvector(sumx,0,(*nrow)*ncolsumx); free_dvector(prodx,0,(*nrow)*ncolsumx); free_dvector(nobsx,0,ncolsumx);
+  free_dvector(sumx,0,(*nrow)*ncolsumx); free_dvector(nobsx,0,ncolsumx);
 
-  free_dvector(sumxpred,0,(*nrow)*ncolsumx); free_dvector(prodxpred,0,(*nrow)*ncolsumx); free_dvector(nobsxpred,0,ncolsumx);
+  free_dvector(sumxpred,0,(*nrow)*ncolsumx);  free_dvector(nobsxpred,0,ncolsumx);
+
+  if (*equalcv == 1) {
+
+    free_dvector(prodx,0,(*nrow));
+
+    free_dvector(prodxpred,0,(*nrow));
+
+  } else {
+
+    free_dvector(prodx,0,(*nrow)*ncolsumx);
+
+    free_dvector(prodxpred,0,(*nrow)*ncolsumx);
+
+  }
 
 
 
@@ -1112,6 +1376,466 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
 
 
+void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, double *nualpha,  double *rho, double *prob, double *lhood, int *B, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, double *alpha0ini, double *nuini, double *balphaini, double *nualphaini, double *rhoini, double *probini, int *nrow, int *ncol, double *x, int *groups, int *K, int *equalcv, int *nclust, int *npat, int *patterns, int *ngrouppat, int *gapprox, int *trace, int *method, int *Bgibbs, double *h_alpha0, double *h_nu, double *h_balpha, double *h_nualpha, double *h_rho, double *h_prob) {
+
+/* Fits GaGa model via Metropolis-Hastings or Simulated Annealing */
+
+/* Input: as in fit_ggC, adding
+
+   - method: 1 for MH, 0 for Simulated Annealing
+
+   - Bgibbs: number of Gibb's sampling iterations to train the MH proposal parameters.
+
+   - h_alpha0, h_nu, h_balpha, h_nualpha, h_rho, h_prob: MH proposal parameters. Ignored unless Bgibbs==0. See dproposal for the parameter meaning
+
+   Output: as in fit_ggC, plus acprop: proportion of accepted proposals. Note: here lhood returns log(likelihood)+log(prior), in fit_ggC it just returns log(likelihood)
+
+*/
+
+
+
+  int i, j, ncolsumx, one=1, *sel, B10, *cluslist, settomean=0, logscale=1, Bburnin, gibbstrace=0;
+
+  double *sumx, *prodx, *nobsx, *sumxpred, *prodxpred, *nobsxpred, *sumd, *sumci, *v, *ngroupstot, *a0gibbs, *nugibbs, *balphagibbs, *nualphagibbs, *rhogibbs, *probgibbs, *lgibbs, *vectemp, *vectemp2, priordens0, priordens1, propdens0, propdens1, lambda, u, temperature, maxlhood;
+
+
+
+  if (*Bgibbs > 0) {      //Train MH proposal parameters
+
+    if ((*trace)==1) printf("Training proposal parameters...\n");
+
+    //Do a few Gibbs' iterations 
+
+    a0gibbs= dvector(0,(*Bgibbs)*(*nclust)); nugibbs= dvector(0,(*Bgibbs)*(*nclust));
+
+    balphagibbs= dvector(0,*Bgibbs); nualphagibbs= dvector(0,*Bgibbs);
+
+    rhogibbs= dvector(0,(*Bgibbs)*(*nclust)); probgibbs= dvector(0,(*Bgibbs)*(*npat));
+
+    lgibbs= dvector(0,*Bgibbs);
+
+    fit_ggC(a0gibbs,nugibbs,balphagibbs,nualphagibbs,rhogibbs,probgibbs,lgibbs,Bgibbs,a_alpha0,b_alpha0,a_nu,b_nu,a_balpha,b_balpha,a_nualpha,b_nualpha,p_rho,p_prob,alpha0ini,nuini,balphaini,nualphaini,rhoini,probini,nrow,ncol,x,groups,K,equalcv,nclust,npat,patterns,ngrouppat,gapprox,&gibbstrace);
+
+
+
+    //Set proposal parameters
+
+    Bburnin= 0.2*(*Bgibbs);   //Gibbs samples to exclude from training sample
+
+    vectemp= dvector(0,*nclust); 
+
+    vectemp2= dvector(0, *nclust);
+
+    colCV(vectemp,a0gibbs+Bburnin*(*nclust),*Bgibbs-Bburnin,*nclust);
+
+    (*h_alpha0)= 1.0/pow(meanx(vectemp,*nclust -1),2);
+
+    colCVinv(vectemp,nugibbs+Bburnin*(*nclust),*Bgibbs-Bburnin,*nclust); 
+
+    (*h_nu)= 1.0/pow(meanx(vectemp,*nclust -1),2);
+
+
+
+    (*h_balpha)= 1.0/pow(cv(balphagibbs,Bburnin,*Bgibbs -1),2);
+
+    (*h_nualpha)= 1.0/pow(cvinv(nualphagibbs,Bburnin,*Bgibbs -1),2);
+
+    free_dvector(vectemp,0,*nclust); free_dvector(vectemp2,0,*nclust);
+
+
+
+    if (*nclust >1) {
+
+      vectemp= dvector(0,*nclust); vectemp2= dvector(0, *nclust);
+
+      colMeans(vectemp,rhogibbs+Bburnin*(*nclust),*Bgibbs-Bburnin,*nclust);
+
+      colVar(vectemp2,rhogibbs+Bburnin*(*nclust),*Bgibbs-Bburnin,*nclust);
+
+      for (i=0; i<*nclust; i++) { vectemp[i]= vectemp[i]*(1.0-vectemp[i])/vectemp2[i] - 1.0; }
+
+      (*h_rho)= meanx(vectemp,*nclust -1);
+
+      free_dvector(vectemp,0,*nclust); free_dvector(vectemp2,0,*nclust);
+
+    } else { (*h_rho)= 1; }
+
+
+
+    vectemp= dvector(0,*npat); vectemp2= dvector(0, *npat);
+
+    colMeans(vectemp,probgibbs+Bburnin*(*npat),*Bgibbs - Bburnin,*npat);
+
+    colVar(vectemp2,probgibbs+Bburnin*(*npat),*Bgibbs - Bburnin,*npat);
+
+    for (i=0; i<*npat; i++) { vectemp[i]= vectemp[i]*(1.0-vectemp[i])/vectemp2[i] - 1.0; }
+
+    (*h_prob)= meanx(vectemp,*npat -1);
+
+    free_dvector(vectemp,0,*npat); free_dvector(vectemp2,0,*npat);
+
+
+
+    free_dvector(a0gibbs,0,(*Bgibbs)*(*nclust)); free_dvector(nugibbs,0,(*Bgibbs)*(*nclust));
+
+    free_dvector(balphagibbs,0,*Bgibbs); free_dvector(nualphagibbs,0,*Bgibbs);
+
+    free_dvector(rhogibbs,0,(*Bgibbs)*(*nclust)); free_dvector(probgibbs,0,(*Bgibbs)*(*npat));
+
+    free_dvector(lgibbs,0,*Bgibbs);
+
+
+
+    balpha[0]= balphagibbs[*Bgibbs-1]; nualpha[0]= nualphagibbs[*Bgibbs-1];
+
+    for (i=0; i<*nclust; i++) { alpha0[i]= a0gibbs[(*Bgibbs-1)*(*nclust)+i]; nu[i]= nugibbs[(*Bgibbs-1)*(*nclust)+i]; }
+
+    for (i=0; i<*npat; i++) { prob[i]= probgibbs[(*Bgibbs-1)*(*npat)+i]; }
+
+    for (i=0; i<*nclust; i++) { rho[i]= rhogibbs[(*Bgibbs-1)*(*nclust)+i]; }
+
+
+
+    //(*h_alpha0)= .5*(*h_alpha0); (*h_nu)= .5*(*h_nu); (*h_balpha)= .5*(*h_balpha); (*h_nualpha)= .5*(*h_nualpha);
+
+    //(*h_prob)= 2.0*(*h_prob); (*h_rho)= 2.0*(*h_rho);
+
+    if ((*trace)==1) printf("Done.\n");
+
+  } else {
+
+    balpha[0]= balphaini[0]; nualpha[0]= nualphaini[0];
+
+    for (i=0; i<*nclust; i++) { alpha0[i]= alpha0ini[i]; nu[i]= nuini[i]; }
+
+    for (i=0; i<*npat; i++) { prob[i]= probini[i]; }
+
+    for (i=0; i<*nclust; i++) { rho[i]= rhoini[i]; }
+
+  }
+
+
+
+  if (*B < 10) (*B)= 10;  //ensure a minimum amount of iterations
+
+  cluslist= ivector(0,*nclust);
+
+  ngroupstot= dvector(0,*nclust);
+
+
+
+  //Pre-compute sufficient statistics
+
+  sel= ivector(0,*nrow);
+
+  for (i=0; i<(*nrow); i++) { sel[i]= i; }
+
+  for (i=0, ncolsumx=0; i<*npat; i++) { ncolsumx += ngrouppat[i]; }
+
+  sumx= dvector(0,(*nrow)*ncolsumx); nobsx= dvector(0,ncolsumx);
+
+  sumxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
+
+  if (*equalcv == 1) {
+
+    prodx= dvector(0,(*nrow));
+
+    prodxpred= dvector(0,(*nrow));
+
+    for (i=0; i<(*nrow)*ncolsumx; i++) { sumxpred[i]= 0; }
+
+    for (i=0; i<(*nrow); i++) { prodxpred[i]= 0; }
+
+  } else {
+
+    prodx= dvector(0,(*nrow)*ncolsumx);
+
+    prodxpred= dvector(0,(*nrow)*ncolsumx);
+
+    for (i=0; i<(*nrow)*ncolsumx; i++) { sumxpred[i]= prodxpred[i]= 0; }
+
+  }
+
+  for (i=0; i<ncolsumx; i++) { nobsxpred[i]= 0; }
+
+  compute_sumxC(sumx,prodx,nobsx,equalcv,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
+
+
+
+  //MCMC
+
+  for (i=0; i<(*nclust); i++) { cluslist[i]= i; }
+
+  cluslist[*nclust]= -1;
+
+  v= dvector(0,(*nrow)*(*npat));
+
+  sumd= dvector(0,*npat); sumci= dvector(0,*nclust);
+
+  pp_ggC(v,lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
+
+  lhood[0]+= dprior_hyperpar(alpha0,nu,balpha,nualpha,rho,prob,nclust,npat,a_alpha0,b_alpha0,a_nu,b_nu,a_balpha,b_balpha,a_nualpha,b_nualpha,p_rho,p_prob,&logscale);
+
+
+
+  if ((*trace) ==1) {
+
+    if ((*method)==1) printf("Starting Metropolis-Hastings sampler... \n"); else printf("Starting Simulated Annealing. Printing best log-posterior found so far...\n  Iteration log-posterior\n");
+
+  }
+
+  for (i=1, B10=(*B)/10, *acprop= 0, maxlhood= lhood[0]; i<*B; i++) {
+
+    rproposal(alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,rho+i*(*nclust),prob+i*(*npat),alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),nclust,npat,h_alpha0,h_nu,h_balpha,h_nualpha,h_rho,h_prob); //generate proposal
+
+
+
+    pp_ggC(v,lhood+i,nrow,sel,ncol,x,groups,K,alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,equalcv,nclust,cluslist,rho+i*(*nclust),prob+i*(*npat),npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox);
+
+    lhood[i]+= dprior_hyperpar(alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,rho+i*(*nclust),prob+i*(*npat),nclust,npat,a_alpha0,b_alpha0,a_nu,b_nu,a_balpha,b_balpha,a_nualpha,b_nualpha,p_rho,p_prob,&logscale);
+
+    propdens0= dproposal(alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,rho+i*(*nclust),prob+i*(*npat),nclust,npat,h_alpha0,h_nu,h_balpha,h_nualpha,h_rho,h_prob,&logscale);
+
+    propdens1= dproposal(alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,rho+i*(*nclust),prob+i*(*npat),alpha0+(i-1)*(*nclust),nu+(i-1)*(*nclust),balpha+i-1,nualpha+i-1,rho+(i-1)*(*nclust),prob+(i-1)*(*npat),nclust,npat,h_alpha0,h_nu,h_balpha,h_nualpha,h_rho,h_prob,&logscale);
+
+
+
+    if ((*method)==1) { //Metropolis-Hastings
+
+      lambda= exp(lhood[i]-lhood[i-1]+propdens0-propdens1);
+
+    } else {            //Simulated annealing
+
+      temperature= 1.0/(log(1.0+i));
+
+      lambda= exp((lhood[i]-lhood[i-1])/temperature);
+
+    }
+
+    u= runif();
+
+    if (u<lambda) { //accept MH step
+
+      if ((*trace ==1) && (maxlhood<lhood[i])) {
+
+	maxlhood= lhood[i];
+
+        if (*method ==0) printf("        %d   %.6f \n",i,lhood[i]);
+
+      }
+
+      (*acprop)= (*acprop)+1;
+
+    } else {        //reject MH step
+
+      lhood[i]= lhood[i-1];
+
+      balpha[i]= balpha[i-1];
+
+      nualpha[i]= nualpha[i-1];
+
+      for (j=0; j< *nclust; j++) { 
+
+	alpha0[i*(*nclust)+j]= alpha0[(i-1)*(*nclust)+j]; 
+
+	nu[i*(*nclust)+j]= nu[(i-1)*(*nclust)+j]; 
+
+	rho[i*(*nclust)+j]= rho[(i-1)*(*nclust)+j]; 
+
+      }
+
+      for (j=0; j< *npat; j++) { prob[i*(*npat)+j]= prob[(i-1)*(*npat)+j]; }
+
+    }
+
+    if ((*trace==1) && (*method==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
+
+  }
+
+  (*acprop)= (*acprop)/(.0+ *B);
+
+  if ((*trace==1) && (*method==1)) printf("Proportion of accepted proposals: %.2f \n",*acprop);
+
+
+
+  free_ivector(sel,0,*nrow);
+
+  free_dvector(sumd,0,*npat); free_dvector(sumci,0,*nclust); free_dvector(v,0,(*nrow)*(*npat));
+
+  free_dvector(sumx,0,(*nrow)*ncolsumx); free_dvector(nobsx,0,ncolsumx);
+
+  free_dvector(sumxpred,0,(*nrow)*ncolsumx);  free_dvector(nobsxpred,0,ncolsumx);
+
+  if (*equalcv == 1) {
+
+    free_dvector(prodx,0,(*nrow));
+
+    free_dvector(prodxpred,0,(*nrow));
+
+  } else {
+
+    free_dvector(prodx,0,(*nrow)*ncolsumx);
+
+    free_dvector(prodxpred,0,(*nrow)*ncolsumx);
+
+  }
+
+
+
+  free_ivector(cluslist,0,*nclust);
+
+  free_dvector(ngroupstot,0,*nclust);
+
+
+
+}
+
+
+
+
+
+double dprior_hyperpar(double *alpha0, double *nu, double *balpha, double *nualpha, double *rho, double *prob, int *nclust, int *npat, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, int *logscale) {
+
+  //Evaluates prior density of hyper-parameters
+
+  int i; double ans;
+
+
+
+  for (i=0, ans=0; i< *nclust; i++) {
+
+    ans+= log(dgammaC(alpha0[i],*a_alpha0,*b_alpha0)) + log(dinvgammaC(nu[i],*a_nu,*b_nu));
+
+  }
+
+  ans+= log(dgammaC(*balpha,*a_balpha,*b_balpha)) + log(dinvgammaC(*nualpha,*a_nualpha,*b_nualpha));
+
+  ans+= log(ddirichlet(prob,p_prob,npat));
+
+  if (*nclust >1) ans+= log(ddirichlet(rho,p_rho,nclust));
+
+  if (*logscale==1) return(ans); else return(exp(ans));
+
+
+
+}
+
+
+
+double dproposal(double *alpha0new, double *nunew, double *balphanew, double *nualphanew, double *rhonew, double *probnew, double *alpha0, double *nu, double *balpha, double *nualpha, double *rho, double *prob, int *nclust, int *npat, double *h_alpha0, double *h_nu, double *h_balpha, double *h_nualpha, double *h_rho, double *h_prob, int *logscale) {
+
+/* Evaluates hyper-par proposal density (used for MH rejection prob)
+
+     alpha0new ~ Gamma(h_alpha0,h_alpha0/alpha0)
+
+     nunew ~ IGamma(h_nu,h_nu*nu)
+
+     balphanew ~ Gamma(h_bapha,h_balpha/balpha)
+
+     nualphanew ~ IGamma(h_nualpha,nualpha*h_nualpha)
+
+     rho ~ Dirichlet(rho*h_rho)
+
+     prob ~ Dirichlet(prob*h_prob)
+
+   Returns: density of the proposal
+
+*/
+
+  int i; double *rhopar, *probpar, ans;
+
+
+
+  rhopar= dvector(0,*nclust); probpar= dvector(0,*npat);
+
+  for (i=0; i< *npat; i++) { probpar[i]= prob[i]*(*h_prob); }
+
+  for (i=0, ans=0; i< *nclust; i++) {
+
+    ans+= log(dgammaC(alpha0new[i],*h_alpha0,(*h_alpha0)/alpha0[i])) + log(dinvgammaC(nunew[i],*h_nu,(*h_nu)*nu[i]));
+
+    rhopar[i]= rho[i]*(*h_rho);
+
+  }
+
+  ans+= log(dgammaC(*balphanew,*h_balpha,(*h_balpha)/(*balpha))) + log(dinvgammaC(*nualphanew,*h_nualpha,(*h_nualpha)*(*nualpha)));
+
+  if (*nclust >1) ans+= ddirichlet(rhonew,rhopar,nclust);
+
+  ans+= ddirichlet(probnew,probpar,npat);
+
+
+
+  free_dvector(rhopar,0,*nclust); free_dvector(probpar,0,*npat);
+
+  if (*logscale==1) return(ans); else return(exp(ans));
+
+
+
+}
+
+
+
+
+
+void rproposal(double *alpha0new, double *nunew, double *balphanew, double *nualphanew, double *rhonew, double *probnew, double *alpha0, double *nu, double *balpha, double *nualpha, double *rho, double *prob, int *nclust, int *npat, double *h_alpha0, double *h_nu, double *h_balpha, double *h_nualpha, double *h_rho, double *h_prob) {
+
+/* Evaluates hyper-par proposal density (used for MH rejection prob)
+
+     alpha0new ~ Gamma(h_alpha0,h_alpha0/alpha0)
+
+     nunew ~ IGamma(h_nu,h_nu*nu)
+
+     balphanew ~ Gamma(h_bapha,h_balpha/balpha)
+
+     nualphanew ~ IGamma(h_nualpha,nualpha*h_nualpha)
+
+     rho ~ Dirichlet(rho*h_rho)
+
+     prob ~ Dirichlet(prob*h_prob)
+
+   Returns: proposed hyper-par values in alpha0new, nunew, balphanew, nualphanew, rhonew, probnew
+
+*/
+
+  int i; double *rhopar, *probpar;
+
+
+
+  rhopar= dvector(0,*nclust); probpar= dvector(0,*npat);
+
+  for (i=0; i< *nclust; i++) { rhopar[i]= rho[i]*(*h_rho); }
+
+  for (i=0; i< *npat; i++) { probpar[i]= prob[i]*(*h_prob); }
+
+
+
+  for (i=0; i< *nclust; i++) {
+
+    alpha0new[i]= rgammaC(*h_alpha0,(*h_alpha0)/alpha0[i]);
+
+    nunew[i]= 1.0/rgammaC(*h_nu,(*h_nu)*nu[i]);
+
+  }
+
+  (*balphanew)= rgammaC(*h_balpha,(*h_balpha)/(*balpha));
+
+  (*nualphanew)= 1.0/rgammaC(*h_nualpha,(*h_nualpha)*(*nualpha));
+
+  if (*nclust >1) rdirichlet(rhonew,rhopar,nclust); else *rhonew= 1;
+
+  rdirichlet(probnew,probpar,npat);
+
+
+
+  free_dvector(rhopar,0,*nclust); free_dvector(probpar,0,*npat);
+
+
+
+}
+
+
+
 /*********************************************************************************************
 
                                    TERMINAL UTILITY ROUTINES
@@ -1120,7 +1844,7 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
 
 
-void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *rho, double *prob, double *alpha0, double *nu, double *balpha, double *nualpha,  int *nclust, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
+void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *rho, double *prob, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
 
 /* Computes posterior prob that a new sample belongs to each group and classifies it to the group with highest prob
 
@@ -1152,6 +1876,8 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
 
    - balpha, nualpha: hyper-prior for alpha is Gamma(balpha,balpha/nualpha)
 
+   - equalcv: set to 1 to indicate CV is constant across groups, 0 otherwise
+
    - npat: number of patterns e.g. number of hypothesis regarding the mean expression levels.
 
    - patterns: matrix indicating which groups are put together under each pattern (*npat rows, K cols).
@@ -1182,9 +1908,9 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
 
 
 
-  int i, j, k, m, ncolsumx, *colini, one=1, coldi, newton=1, logscale=1, usexpred=0;
+  int i, j, k, m, ncolsumx, *colini, one=1, coldi, newton=2, logscale=1, usexpred=0, lengtha;
 
-  double logl, sumf, a2, b1, b2, s, psum, maxp, k1, k2, k3, *sumxpred, *prodxpred, *nobsxpred;
+  double logl, sumf, a2, b1, b2, *s, psum, maxp, k1, k2, k3, *sumxpred, *prodxpred, *nobsxpred;
 
 
 
@@ -1200,57 +1926,123 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
 
 
 
-  if (*usesumx == 0) { compute_sumxC(sumx,prodx,nobsx,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
+  if (*usesumx == 0) { compute_sumxC(sumx,prodx,nobsx,equalcv,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
 
 
 
-  psum= 0;
+  if (*equalcv == 1) {      //CONSTANT CV ACROSS GROUPS
 
-  for (k=0; k<(*K); k++) {                                       //loop over groups
+    psum= 0;
 
-    logl=0;
+    for (k=0; k<(*K); k++) {                                       //loop over groups
 
-    for (i=0; i<(*nsel); i++) {                                  //loop over nsel genes
+      logl=0;
 
-      sumf= 0;
+      for (i=0; i<(*nsel); i++) {                                  //loop over nsel genes
 
-      for (j=0; j<(*npat); j++) {                                //sum over patterns
+	sumf= 0;
 
-	coldi= colini[j]+patterns[(*K)*j+k];
+	for (j=0; j<(*npat); j++) {                                //sum over patterns
 
-	for (m=0; m<(*nclust); m++) {                            //sum over clusters
+	  coldi= colini[j];
 
-	  b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx+coldi]; b2= alpha0[m]/nu[m];
+	  for (m=0; m<(*nclust); m++) {                            //sum over clusters
 
-	  s= sumx[sel[i]*ncolsumx+coldi];
+	    lengtha= ngrouppat[j];
 
-	  k1= kcgammaC(nobsx+coldi,balpha,&b1,alpha0+m,&b2,&s,&newton,&logscale);
+	    b1= balpha[0]/nualpha[0] - prodx[sel[i]]; b2= alpha0[m]/nu[m];
 
-	  b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx+coldi] - log(xnew[i]);
+	    s= sumx + sel[i]*ncolsumx;
 
-	  s= sumx[sel[i]*ncolsumx+coldi] + xnew[i];
+	    k1= kcgammaC(nobsx+coldi,balpha,&b1,alpha0+m,&b2,s+coldi,&lengtha,&newton,&logscale);
 
-	  a2= nobsx[coldi]+1;
+	    b1= balpha[0]/nualpha[0] - prodx[sel[i]] - log(xnew[i]);
 
-	  k2= kcgammaC(&a2,balpha,&b1,alpha0+m,&b2,&s,&newton,&logscale);
+	    s[coldi+patterns[(*K)*j+k]]+= xnew[i];
 
-	  k3= pdfcond_pat_clus(sel[i],j,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,usexpred);
+	    nobsx[coldi+patterns[(*K)*j+k]]+= 1;
 
-	  sumf += exp(k2-k1-log(xnew[i])+k3) * prob[j] * rho[m];
+	    k2= kcgammaC(nobsx+coldi,balpha,&b1,alpha0+m,&b2,s+coldi,&lengtha,&newton,&logscale);
 
-	}
+	    s[coldi+patterns[(*K)*j+k]]-= xnew[i];
 
-      } //end j loop
+	    nobsx[coldi+patterns[(*K)*j+k]]-= 1;
 
-      logl += log(sumf);
+	    k3= pdfcond_pat_clus(sel[i],j,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,equalcv,usexpred);
 
-    } //end i loop
+	    sumf += exp(k2-k1-log(xnew[i])+k3) * prob[j] * rho[m];
 
-    //un-normalized post prob
+	  }
 
-    if (k==0) { pgroup[0]= logl; psum= 1; } else { pgroup[k]= exp(logl-pgroup[0])*Kprob[k]/Kprob[0]; psum+= pgroup[k]; }
+	} //end j loop
 
-  } //end k loop
+	logl += log(sumf);
+
+      } //end i loop
+
+      //un-normalized post prob
+
+      if (k==0) { pgroup[0]= logl; psum= 1; } else { pgroup[k]= exp(logl-pgroup[0])*Kprob[k]/Kprob[0]; psum+= pgroup[k]; }
+
+    } //end k loop
+
+  } else {               //VARYING CV ACROSS GROUPS
+
+    lengtha = 1;
+
+    s= dvector(0,1);
+
+    psum= 0;
+
+    for (k=0; k<(*K); k++) {                                       //loop over groups
+
+      logl=0;
+
+      for (i=0; i<(*nsel); i++) {                                  //loop over nsel genes
+
+	sumf= 0;
+
+	for (j=0; j<(*npat); j++) {                                //sum over patterns
+
+	  coldi= colini[j]+patterns[(*K)*j+k];
+
+	  for (m=0; m<(*nclust); m++) {                            //sum over clusters
+
+	    b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx+coldi]; b2= alpha0[m]/nu[m];
+
+	    s[0]= sumx[sel[i]*ncolsumx+coldi];
+
+	    k1= kcgammaC(nobsx+coldi,balpha,&b1,alpha0+m,&b2,s,&lengtha,&newton,&logscale);
+
+	    b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx+coldi] - log(xnew[i]);
+
+	    s[0]= sumx[sel[i]*ncolsumx+coldi] + xnew[i];
+
+	    a2= nobsx[coldi]+1;
+
+	    k2= kcgammaC(&a2,balpha,&b1,alpha0+m,&b2,s,&lengtha,&newton,&logscale);
+
+	    k3= pdfcond_pat_clus(sel[i],j,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,equalcv,usexpred);
+
+	    sumf += exp(k2-k1-log(xnew[i])+k3) * prob[j] * rho[m];
+
+	  }
+
+	} //end j loop
+
+	logl += log(sumf);
+
+      } //end i loop
+
+      //un-normalized post prob
+
+      if (k==0) { pgroup[0]= logl; psum= 1; } else { pgroup[k]= exp(logl-pgroup[0])*Kprob[k]/Kprob[0]; psum+= pgroup[k]; }
+
+    } //end k loop
+
+    free_dvector(s,0,1);
+
+  }
 
 
 
@@ -1632,7 +2424,7 @@ void uobsgeneC(double *u, double *fdr, double *fnr, int *util, int *nsel, int *s
 
 
 
-void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, double *z, double *m, double *s, int *index, int *znclust, int *zclustsize, int *nrow, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, int *cluslist, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, double *sumxpred, double *prodxpred, double *nobsxpred, int *gapprox) {
+void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, double *z, double *m, double *s, int *index, int *znclust, int *zclustsize, int *nrow, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, int *cluslist, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, double *sumxpred, double *prodxpred, double *nobsxpred, int *gapprox) {
 
 /* Estimate expected nb of false positives in gene DE analysis by permutation methods for
 
@@ -1700,7 +2492,7 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
   for (i=0; i<(*nthre); i++) { efp[i]= 0; }
 
-  pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob0,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&usesumx,gapprox); //post prob
+  pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob0,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&usesumx,gapprox); //post prob
 
   countde(nde,threshold,nthre,fdrseq,nrow,v,npat);   //count nb of genes declared DE
 
@@ -1738,7 +2530,7 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
     //for (j=0,err=1; (j<(*niter)) && (err>eps); j++) {     //re-estimate prob of each expr pattern
 
-    //pp_ggC(v,&lhood,nrow,sel,ncol,xboot,groups,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob0,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&usesumx,gapprox); //post prob
+    //pp_ggC(v,&lhood,nrow,sel,ncol,xboot,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob0,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&usesumx,gapprox); //post prob
 
     //colMeans(probnew,v,*nrow,*npat);
 
@@ -1748,7 +2540,7 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
     //countde(nde0,nthre,fdrseq,nrow,v,npat);   //nb of DE genes re-applying optimal rule
 
-    pp_ggC(v,&lhood,nrow,sel,ncol,xboot,groups,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob0,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&usesumx,gapprox); //pp wo re-estimation
+    pp_ggC(v,&lhood,nrow,sel,ncol,xboot,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob0,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&usesumx,gapprox); //pp wo re-estimation
 
     countde_threshold(nde0,threshold,nthre,nrow,v,npat); //nb of DE genes using same rejection region
 
@@ -2052,7 +2844,7 @@ void utgene_parC(double *u, int *d, double *fdr, double *fnr, double *power, dou
 
 
 
-void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, int *B, double *preceps, int *genelimit, double *v0thre, int *nsel, int *sel, int *usesel, int *nrow, int *ncol, double *x, int *groups, double *v, int *K, double *Kprob, double *alpha0, double *nu, double *balpha, double *nualpha,  int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, int *ncolsumx, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
+void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, int *B, double *preceps, int *genelimit, double *v0thre, int *nsel, int *sel, int *usesel, int *nrow, int *ncol, double *x, int *groups, double *v, int *K, double *Kprob, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, int *ncolsumx, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
 
 /* Estimates expected terminal utility for sample classification. Currenly utility defined as correct classification
 
@@ -2144,7 +2936,7 @@ void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, 
 
   if (*usesel == 0) { sel_mostDEgenes(nsel,sel,genelimit,v0thre,nrow,npat,v); }  //select most DE genes
 
-  if (*usesumx == 0) { compute_sumxC(sumx,prodx,nobsx,nsel,sel,ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
+  if (*usesumx == 0) { compute_sumxC(sumx,prodx,nobsx,equalcv,nsel,sel,ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
 
 
 
@@ -2162,9 +2954,9 @@ void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, 
 
     curgroup= rdisc(Kprob,*K);
 
-    simnewsamples_ggC(xnew,dnew,anew,lnew,&one,&curgroup,K,nsel,sel,alpha0,nu,balpha,nualpha,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,gapprox); //get new sample
+    simnewsamples_ggC(xnew,dnew,anew,lnew,&one,&curgroup,K,nsel,sel,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,gapprox); //get new sample
 
-    sampleclas_ggC(&d,pgroup,xnew,nsel,sel,nrow,ncol,x,groups,K,Kprob,rho,prob,alpha0,nu,balpha,nualpha,nclust,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox); //classify it
+    sampleclas_ggC(&d,pgroup,xnew,nsel,sel,nrow,ncol,x,groups,K,Kprob,rho,prob,alpha0,nu,balpha,nualpha,equalcv,nclust,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox); //classify it
 
     (*ccall) += pgroup[d]; (*seccall) += pgroup[d]*pgroup[d];
 
@@ -2204,7 +2996,7 @@ void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, 
 
 
 
-void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, int *util, double *cf, int *genelimit, double *v0thre, int *nsel, int *sel, int *usesel, int *nrow, int *ncol, double *x, int *groups, int *K, double *v, double *alpha0, double *nu, double *balpha, double *nualpha,  int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *fdrmax, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
+void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, int *util, double *cf, int *genelimit, double *v0thre, int *nsel, int *sel, int *usesel, int *nrow, int *ncol, double *x, int *groups, int *K, double *v, double *alpha0, double *nu, double *balpha, double *nualpha,  int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *fdrmax, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
 
 /* Estimates expected predictive terminal utility for gene differential expression analysis after drawing deltat more observations per group */
 
@@ -2296,7 +3088,7 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
   d= ivector(0,(*nrow));
 
-  apred= dvector(0,(*nrow)*(*K));
+  if (*equalcv == 1) apred= dvector(0,*nrow); else apred= dvector(0,(*nrow)*(*K));
 
   lpred= dvector(0,(*nrow)*(*K));
 
@@ -2322,9 +3114,19 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
   ncolsumx= 0; for (i=0; i<(*npat); i++) { ncolsumx += ngrouppat[i]; }
 
-  if ((*usesumx)==0) { compute_sumxC(sumx,prodx,nobsx,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
+  if ((*usesumx)==0) { compute_sumxC(sumx,prodx,nobsx,equalcv,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
 
-  sumxpred= dvector(0,(*nrow)*ncolsumx); prodxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
+  sumxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
+
+  if (*equalcv == 1) {
+
+    prodxpred= dvector(0,(*nrow));
+
+  } else {
+
+    prodxpred= dvector(0,(*nrow)*ncolsumx);
+
+  }
 
 
 
@@ -2332,11 +3134,11 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
   for (i=0; i<(*B) && (cv>(*preceps) || i<100); i++) {                 //loop over simulations
 
-    simpred_ggC(xpred,dpred,apred,lpred,&zero,deltat,groups,K,nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+    simpred_ggC(xpred,dpred,apred,lpred,&zero,deltat,groups,K,nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
 
-    compute_sumxC(sumxpred,prodxpred,nobsxpred,nsel,sel,&ncolsumx,&ncolpred,xpred,groupspred,K,npat,patterns,ngrouppat,&one); //update suff statistics
+    compute_sumxC(sumxpred,prodxpred,nobsxpred,equalcv,nsel,sel,&ncolsumx,&ncolpred,xpred,groupspred,K,npat,patterns,ngrouppat,&one); //update suff statistics
 
-    pp_ggC(vpred,&lhood,nsel,sel,&ncolpred,xpred,groupspred,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //post prob of patterns
+    pp_ggC(vpred,&lhood,nsel,sel,&ncolpred,xpred,groupspred,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //post prob of patterns
 
     utgene_parC(&uobs, d, &fdrobs, &fnrobs, &powobs, &threshold, util, cf, nsel, sel, vpred, npat, fdrmax);  //optimal term decisions & exp utility
 
@@ -2360,7 +3162,7 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
   free_ivector(d,0,(*nrow));
 
-  free_dvector(apred,0,(*nrow)*(*K));
+  if (*equalcv == 1) free_dvector(apred,0,*nrow); else free_dvector(apred,0,(*nrow)*(*K));
 
   free_dvector(lpred,0,(*nrow)*(*K));
 
@@ -2370,7 +3172,15 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
   free_dvector(sumxpred,0,(*nrow)*ncolsumx);
 
-  free_dvector(prodxpred,0,(*nrow)*ncolsumx);
+  if (*equalcv == 1) {
+
+    free_dvector(prodxpred,0,(*nrow));
+
+  } else {
+
+    free_dvector(prodxpred,0,(*nrow)*ncolsumx);
+
+  }
 
   free_dvector(nobsxpred,0,ncolsumx);
 
@@ -2382,7 +3192,7 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
 
 
-void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup, int *deltat, int *B, double *preceps, int *genelimit, double *v0thre, int *nsel, int *sel, int *usesel, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *v, double *alpha0, double *nu, double *balpha, double *nualpha,  int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
+void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup, int *deltat, int *B, double *preceps, int *genelimit, double *v0thre, int *nsel, int *sel, int *usesel, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *v, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
 
 /* Estimates expected predictive terminal utility for sample classification after drawing deltat more observations per group */
 
@@ -2476,7 +3286,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
   d= ivector(0,(*nrow));
 
-  apred= dvector(0,(*nrow)*(*K));
+  if (*equalcv == 1) apred= dvector(0,*nrow); else apred= dvector(0,(*nrow)*(*K));
 
   lpred= dvector(0,(*nrow)*(*K));
 
@@ -2506,9 +3316,19 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
   ncolsumx= 0; for (i=0; i<(*npat); i++) { ncolsumx += ngrouppat[i]; }
 
-  if ((*usesumx)==0) { compute_sumxC(sumx,prodx,nobsx,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
+  if ((*usesumx)==0) { compute_sumxC(sumx,prodx,nobsx,equalcv,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
 
-  sumxpred= dvector(0,(*nrow)*ncolsumx); prodxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
+  sumxpred= dvector(0,(*nrow)*ncolsumx); nobsxpred= dvector(0,ncolsumx);
+
+  if (*equalcv) {
+
+    prodxpred= dvector(0,(*nrow));
+
+  } else {
+
+    prodxpred= dvector(0,(*nrow)*ncolsumx);;
+
+  }
 
 
 
@@ -2520,17 +3340,17 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
   for (i=0; i<(*B) && (cv>(*preceps) || i<100); i++) {                                        //loop over simulations
 
-    simpred_ggC(xpred,dpred,apred,lpred,&zero,deltat,groups,K,nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+    simpred_ggC(xpred,dpred,apred,lpred,&zero,deltat,groups,K,nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
 
-    compute_sumxC(sumxpred,prodxpred,nobsxpred,nsel,sel,&ncolsumx,&ncolpred,xpred,groupspred,K,npat,patterns,ngrouppat,&one); //suff stat for xpred
+    compute_sumxC(sumxpred,prodxpred,nobsxpred,equalcv,nsel,sel,&ncolsumx,&ncolpred,xpred,groupspred,K,npat,patterns,ngrouppat,&one); //suff stat for xpred
 
-    pp_ggC(vpred,&lhood,nsel,sel,&ncolpred,xpred,groupspred,K,alpha0,nu,balpha,nualpha,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //post prob of patterns
+    pp_ggC(vpred,&lhood,nsel,sel,&ncolpred,xpred,groupspred,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //post prob of patterns
 
-    add_sumxC(sumxpred,prodxpred,nobsxpred,nsel,sel,&ncolsumx,sumx,prodx,nobsx); //add sumx and sumxpred into sumxpred
+    add_sumxC(sumxpred,prodxpred,nobsxpred,equalcv,nsel,sel,&ncolsumx,sumx,prodx,nobsx); //add sumx and sumxpred into sumxpred
 
 
 
-    utsample_ggC(&ccobs,&seccobs,ccgroupobs,nobsgroup,&one,preceps,genelimit,v0thre,nsel,sel,&one,nrow,&ncolpred,xpred,groupspred,vpred,K,Kprob,alpha0,nu,balpha,nualpha,nclust,rho,prob,npat,patterns,ngrouppat,&ncolsumx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //observed utility (only 1 sample taken)
+    utsample_ggC(&ccobs,&seccobs,ccgroupobs,nobsgroup,&one,preceps,genelimit,v0thre,nsel,sel,&one,nrow,&ncolpred,xpred,groupspred,vpred,K,Kprob,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,prob,npat,patterns,ngrouppat,&ncolsumx,sumxpred,prodxpred,nobsxpred,&one,gapprox); //observed utility (only 1 sample taken)
 
 
 
@@ -2556,7 +3376,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
   free_ivector(d,0,(*nrow));
 
-  free_dvector(apred,0,(*nrow)*(*K));
+  if (*equalcv == 1) free_dvector(apred,0,*nrow); else free_dvector(apred,0,(*nrow)*(*K));
 
   free_dvector(lpred,0,(*nrow)*(*K));
 
@@ -2566,7 +3386,15 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
   free_dvector(sumxpred,0,(*nrow)*ncolsumx);
 
-  free_dvector(prodxpred,0,(*nrow)*ncolsumx);
+  if (*equalcv == 1) {
+
+    free_dvector(prodxpred,0,(*nrow));
+
+  } else {
+
+    free_dvector(prodxpred,0,(*nrow)*ncolsumx);
+
+  }
 
   free_dvector(nobsxpred,0,ncolsumx);
 
@@ -2590,11 +3418,13 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
 
 
-void compute_sumxC(double *sumx, double *prodx, double *nobsx, int *nsel, int *sel, int *ncolsumx, int *ncol, double *x, int *groups, int *K, int *npat, int *patterns, int *ngrouppat, int *init0) {
+void compute_sumxC(double *sumx, double *prodx, double *nobsx, int *equalcv, int *nsel, int *sel, int *ncolsumx, int *ncol, double *x, int *groups, int *K, int *npat, int *patterns, int *ngrouppat, int *init0) {
 
 /* Computes sufficient statistics for Gamma/Gamma model: sums of columns of x and number of terms in the sum */
 
 /* Input arguments
+
+  - equalcv: set to 1 to indicate constant CV across groups, 0 otherwise
 
   - nsel: sufficient statistics will only be computed for nsel genes
 
@@ -2634,47 +3464,79 @@ void compute_sumxC(double *sumx, double *prodx, double *nobsx, int *nsel, int *s
 
 
 
-  int i, j, di, colini, group;
+  int i, j, k, di, colini, group;
 
 
 
   //Compute sums
 
-  colini= 0;
-
-  for (di=0; di<(*npat); di++) {                                        //for each pattern
+  if (*equalcv == 1) {
 
     for (i=0; i<(*nsel); i++) {                                         //for each gene
 
-      if ((*init0)==1) { 
+      if ((*init0)==1) {
 
-	for (j=0; j<ngrouppat[di]; j++) { sumx[sel[i]*(*ncolsumx)+colini+j] = prodx[sel[i]*(*ncolsumx)+colini+j] = 0; }
+	for (k=0; k<(*ncolsumx); k++) { sumx[sel[i]*(*ncolsumx)+k] = 0; }
+
+	prodx[sel[i]] = 0;
 
       }
 
       for (j=0; j<(*ncol); j++) {                                       //for each sample
 
-	group= patterns[di*(*K)+groups[j]];                                //find cluster of groups each obs corresponds to
+	for (di=0,colini=0; di<(*npat); di++) {                                        //for each pattern
 
-	if (x[sel[i]*(*ncol)+j]>0.0001) {
+	  group= patterns[di*(*K)+groups[j]];                                //find cluster of groups each obs corresponds to
 
-	  sumx[sel[i]*(*ncolsumx)+colini+group] += x[sel[i]*(*ncol)+j];
+	  if (x[sel[i]*(*ncol)+j]>0.0001) { sumx[sel[i]*(*ncolsumx)+colini+group] += x[sel[i]*(*ncol)+j]; } else { sumx[sel[i]*(*ncolsumx)+colini+group] += 0.0001; }
 
-	  prodx[sel[i]*(*ncolsumx)+colini+group] += log(x[sel[i]*(*ncol)+j]);
-
-	} else {
-
-	  sumx[sel[i]*(*ncolsumx)+colini+group] += 0.0001;
-
-	  prodx[sel[i]*(*ncolsumx)+colini+group] += log(0.0001);
+	  colini += ngrouppat[di];
 
 	}
 
-      }                                                                 //end for each sample
+	if (x[sel[i]*(*ncol)+j]>0.0001) { prodx[sel[i]] += log(x[sel[i]*(*ncol)+j]); } else { prodx[sel[i]] += log(0.0001); }
 
-    }                                                                   //end for each gene
+      }  
 
-    colini += ngrouppat[di];
+    }
+
+  } else {
+
+    for (di=0,colini=0; di<(*npat); di++) {                                        //for each pattern
+
+      for (i=0; i<(*nsel); i++) {                                         //for each gene
+
+	if ((*init0)==1) { 
+
+	  for (j=0; j<ngrouppat[di]; j++) { sumx[sel[i]*(*ncolsumx)+colini+j] = prodx[sel[i]*(*ncolsumx)+colini+j] = 0; }
+
+	}
+
+	for (j=0; j<(*ncol); j++) {                                       //for each sample
+
+	  group= patterns[di*(*K)+groups[j]];                                //find cluster of groups each obs corresponds to
+
+	  if (x[sel[i]*(*ncol)+j]>0.0001) {
+
+	    sumx[sel[i]*(*ncolsumx)+colini+group] += x[sel[i]*(*ncol)+j];
+
+	    prodx[sel[i]*(*ncolsumx)+colini+group] += log(x[sel[i]*(*ncol)+j]);
+
+	  } else {
+
+	    sumx[sel[i]*(*ncolsumx)+colini+group] += 0.0001;
+
+	    prodx[sel[i]*(*ncolsumx)+colini+group] += log(0.0001);
+
+	  }
+
+	}                                                                 //end for each sample
+
+      }                                                                   //end for each gene
+
+      colini += ngrouppat[di];
+
+    }
 
   }                                                                     //end for each pattern
 
@@ -2710,12 +3572,14 @@ void compute_sumxC(double *sumx, double *prodx, double *nobsx, int *nsel, int *s
 
 
 
-void add_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *nsel, int *sel, int *ncolsumx, double *sumx, double *prodx, double *nobsx) {
+void add_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *equalcv, int *nsel, int *sel, int *ncolsumx, double *sumx, double *prodx, double *nobsx) {
 
 /* Adds contents of sumx, prodx, nobsx to sumxnew, prodxnew, nobsnew */
 
 /* Input arguments
 
+   - equalcv: set to 1 to indicate constant CV across groups, 0 otherwise
+
    - nsel: contents will only be copied for nsel genes
 
    - sel: vector with its first nsel positions indicating the genes to make copies for
@@ -2742,26 +3606,44 @@ void add_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *nsel, in
 
 
 
-  for (j=0; j<(*ncolsumx); j++) {
+  if (*equalcv == 1) {
 
-    for (i=0; i<(*nsel); i++) { sumxnew[sel[i]*(*ncolsumx)+j]+= sumx[sel[i]*(*ncolsumx)+j]; prodxnew[sel[i]*(*ncolsumx)+j]+= prodx[sel[i]*(*ncolsumx)+j]; }
+    for (i=0; i<(*nsel); i++) {
 
-    nobsnew[j]+= nobsx[j];
+      for (j=0; j<(*ncolsumx); j++) { sumxnew[sel[i]*(*ncolsumx)+j]+= sumx[sel[i]*(*ncolsumx)+j]; }
+
+      prodxnew[sel[i]]+= prodx[sel[i]];
+
+    }
+
+  } else {
+
+    for (i=0; i<(*nsel); i++) {
+
+      for (j=0; j<(*ncolsumx); j++) {
+
+	sumxnew[sel[i]*(*ncolsumx)+j]+= sumx[sel[i]*(*ncolsumx)+j]; prodxnew[sel[i]*(*ncolsumx)+j]+= prodx[sel[i]*(*ncolsumx)+j];
+
+      }
+
+    }
 
   }
 
-
+  for (j=0; j<(*ncolsumx); j++) { nobsnew[j]+= nobsx[j]; }
 
 }
 
 
 
-void copy_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *nsel, int *sel, int *ncolsumx, double *sumx, double *prodx, double *nobsx) {
+void copy_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *equalcv, int *nsel, int *sel, int *ncolsumx, double *sumx, double *prodx, double *nobsx) {
 
 /* Copies contents of sumx, prodx, nobsx into sumxnew, prodxnew, nobsnew */
 
 /* Input arguments
 
+   - equalcv: set to 1 to indicate constant CV across groups, 0 otherwise
+
    - nsel: contents will only be copied for nsel genes
 
    - sel: vector with its first nsel positions indicating the genes to make copies for
@@ -2788,13 +3670,27 @@ void copy_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *nsel, i
 
 
 
-  for (j=0; j<(*ncolsumx); j++) {
+  if (*equalcv == 1) {
 
-    for (i=0; i<(*nsel); i++) { sumxnew[sel[i]*(*ncolsumx)+j]= sumx[sel[i]*(*ncolsumx)+j]; prodxnew[sel[i]*(*ncolsumx)+j]= prodx[sel[i]*(*ncolsumx)+j]; }
+    for (i=0; i<(*nsel); i++) { for (j=0; j<(*ncolsumx); j++) { sumxnew[sel[i]*(*ncolsumx)+j]= sumx[sel[i]*(*ncolsumx)+j]; } }
 
-    nobsnew[j]= nobsx[j];
+    prodxnew[sel[i]]= prodx[sel[i]];
+
+  } else {
+
+    for (i=0; i<(*nsel); i++) { 
+
+      for (j=0; j<(*ncolsumx); j++) {
+
+	sumxnew[sel[i]*(*ncolsumx)+j]= sumx[sel[i]*(*ncolsumx)+j]; prodxnew[sel[i]*(*ncolsumx)+j]= prodx[sel[i]*(*ncolsumx)+j];
+
+      }
+
+    }
 
   }
+
+  for (j=0; j<(*ncolsumx); j++) { nobsnew[j]= nobsx[j]; }
 
 
 
@@ -2804,7 +3700,7 @@ void copy_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *nsel, i
 
 
 
-void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, int *cluslist, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, double *sumxpred, double *prodxpred, double *nobsxpred, int *usesumx, int *gapprox) {
+void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, int *cluslist, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, double *sumxpred, double *prodxpred, double *nobsxpred, int *usesumx, int *gapprox) {
 
 /* Computes posterior probabilities of each expression pattern given in 'patterns' conditional on data x and hyperparameters for Gamma/Gamma model */
 
@@ -2827,6 +3723,8 @@ void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x,
    - alpha0,nu: prior for lambda is Gamma(alpha0,nu)
 
    - balpha,nualpha: prior for alpha is Gamma(balpha,nualpha)
+
+   - equalcv: set to 1 to indicate constant CV across groups, 0 otherwise
 
    - nclust: number of clusters in hyper-prior for (alpha,lambda)
 
@@ -2876,6 +3774,10 @@ void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x,
 
   double vsum, r0, rcur, rsum, lgene;
 
+  //  FILE *ifile; //debug
+
+  //ifile= openOut("lhood.txt"); //debug
+
 
 
 colini= ivector(0,*npat);
@@ -2888,13 +3790,23 @@ ncolsumx= colini[(*npat)-1] + ngrouppat[(*npat)-1];
 
 if ((*usesumx==0)) {                                               //if suff stat not pre-computed
 
-  compute_sumxC(sumx,prodx,nobsx,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&init0);
+  compute_sumxC(sumx,prodx,nobsx,equalcv,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&init0);
 
-  for (j=0; j<ncolsumx; j++) { 
+  for (j=0; j<ncolsumx; j++) {
 
-    for (i=0; i<(*nsel); i++) { sumxpred[i*ncolsumx+j]= prodxpred[i*ncolsumx+j]= 0; }
+    for (i=0; i<(*nsel); i++) { sumxpred[i*ncolsumx+j]= 0; }
 
     nobsxpred[j]= 0;
+
+  }
+
+  if (*equalcv==1) {
+
+    for (i=0; i<(*nsel); i++) { prodxpred[i]= 0; }
+
+  } else {
+
+    for (j=0; j<ncolsumx; j++) { for (i=0; i<(*nsel); i++) { prodxpred[i*ncolsumx+j]= 0; } }
 
   }
 
@@ -2914,7 +3826,9 @@ for (i=0; i<(*nsel); i++) {                                      //for each gene
 
       m= cluslist[k];
 
-      rcur= pdfcond_pat_clus(sel[i],j,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,usexpred);
+      rcur= pdfcond_pat_clus(sel[i],j,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,equalcv,usexpred);
+
+      //      if (j==(*npat -1)) fprintf(ifile,"%.6f \n",rcur); else fprintf(ifile,"%.6f ",rcur); //debug
 
       lgene += exp(rcur)*prob[j]*rho[m];
 
@@ -2940,9 +3854,13 @@ for (i=0; i<(*nsel); i++) {                                      //for each gene
 
   (*lhood) += log(lgene);
 
+  //  fprintf(ifile,"%.6f \n",log(lgene)); //debug
+
 }                                                                //end for each gene
 
 
+
+//fclose(ifile); //debug
 
 free_ivector(colini,0,*npat);
 
@@ -2952,41 +3870,89 @@ free_ivector(colini,0,*npat);
 
 
 
-double pdfcond_pat_clus(int geneid, int patid, int clusid, double *alpha0, double *nu, double *balpha, double *nualpha, int *ngrouppat, int *colini, int ncolsumx, double *sumx, double *sumxpred, double *prodx, double *prodxpred, double *nobsx, double *nobsxpred, int usexpred) {
+double pdfcond_pat_clus(int geneid, int patid, int clusid, double *alpha0, double *nu, double *balpha, double *nualpha, int *ngrouppat, int *colini, int ncolsumx, double *sumx, double *sumxpred, double *prodx, double *prodxpred, double *nobsx, double *nobsxpred, int *equalcv, int usexpred) {
 
 //Density of data for gene geneid conditional on it following expression pattern patid and belonging to hyper-parameter cluster clusid
 
-  int l, newton= 1, logscale=1;
+  int l, newton= 2, logscale=1, lengtha;
 
-  double rcur, knorm, n, s, pr, b1, b2;
-
-  knorm= alpha0[clusid]*log(alpha0[clusid]/nu[clusid]) +balpha[0]*log(balpha[0]/nualpha[0]) -gamln(alpha0+clusid) -gamln(balpha);
-
-  rcur= ngrouppat[patid]*knorm;
+  double rcur, *n, *s, pr, b1, b2;
 
 
 
-  for (l=0; l<(ngrouppat[patid]); l++) {
+  if (*equalcv == 1) {
 
-    n= nobsx[colini[patid]+l];
+    rcur= ngrouppat[patid]*(alpha0[clusid]*log(alpha0[clusid]/nu[clusid]) -gamln(alpha0+clusid)) + balpha[0]*log(balpha[0]/nualpha[0]) -gamln(balpha);
 
-    s= sumx[geneid*ncolsumx+colini[patid]+l];
+    lengtha= ngrouppat[patid];
 
-    pr= prodx[geneid*ncolsumx+colini[patid]+l];
+    pr= prodx[geneid];
 
-    if (usexpred==1) {
+    if (usexpred==0) {
 
-      n += nobsxpred[colini[patid]+l];
+      n= nobsx+colini[patid];
 
-      s += sumxpred[geneid*ncolsumx+colini[patid]+l];
+      s= sumx+geneid*ncolsumx+colini[patid];
 
-      pr += prodxpred[geneid*ncolsumx+colini[patid]+l];
+      b1= balpha[0]/nualpha[0] - pr; b2= alpha0[clusid]/nu[clusid];
+
+      rcur += kcgammaC(n,balpha,&b1,alpha0+clusid,&b2,s,&lengtha,&newton,&logscale);
+
+    } else {
+
+      n= dvector(0,ngrouppat[patid]); s= dvector(0,ngrouppat[patid]);
+
+      for (l=0; l<ngrouppat[patid]; l++) { 
+
+	n[l]= nobsx[colini[patid]+l] + nobsxpred[colini[patid]+l];
+
+	s[l]= sumx[geneid*ncolsumx+colini[patid]+l] + sumxpred[geneid*ncolsumx+colini[patid]+l];
+
+      }
+
+      b1= balpha[0]/nualpha[0] - pr; b2= alpha0[clusid]/nu[clusid];
+
+      rcur += kcgammaC(n,balpha,&b1,alpha0+clusid,&b2,s,&lengtha,&newton,&logscale);
+
+      free_dvector(n,0,ngrouppat[patid]); free_dvector(s,0,ngrouppat[patid]);
 
     }
 
-    b1= balpha[0]/nualpha[0] - pr; b2= alpha0[clusid]/nu[clusid];
+  } else {
 
-    rcur += kcgammaC(&n,balpha,&b1,alpha0+clusid,&b2,&s,&newton,&logscale);
+    n= dvector(0,1); s= dvector(0,1);
+
+    lengtha= 1;
+
+    rcur= ngrouppat[patid]*(alpha0[clusid]*log(alpha0[clusid]/nu[clusid]) -gamln(alpha0+clusid) + balpha[0]*log(balpha[0]/nualpha[0]) -gamln(balpha));
+
+    for (l=0; l<(ngrouppat[patid]); l++) {
+
+      n[0]= nobsx[colini[patid]+l];
+
+      s[0]= sumx[geneid*ncolsumx+colini[patid]+l];
+
+      pr= prodx[geneid*ncolsumx+colini[patid]+l];
+
+      if (usexpred==1) {
+
+	n[0] += nobsxpred[colini[patid]+l];
+
+	s[0] += sumxpred[geneid*ncolsumx+colini[patid]+l];
+
+	pr += prodxpred[geneid*ncolsumx+colini[patid]+l];
+
+      }
+
+      b1= balpha[0]/nualpha[0] - pr; b2= alpha0[clusid]/nu[clusid];
+
+      //if (geneid==0) printf("Gene %d, Pattern %d. %.4f %.4f %.4f %.4f %.4f %.4f \n",geneid,patid,n[0],balpha[0],b1,alpha0[clusid],b2,s[0]); //debug
+
+      rcur += kcgammaC(n,balpha,&b1,alpha0+clusid,&b2,s,&lengtha,&newton,&logscale);
+
+    }
+
+    free_dvector(n,0,1); free_dvector(s,0,1);
 
   }
 
@@ -3008,11 +3974,13 @@ double pdfcond_pat_clus(int geneid, int patid, int clusid, double *alpha0, doubl
 
 
 
-void simhyperpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, double *rho, double *prob, int *cluslist, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, int *nrow, double *sumd, double *sumci, double *ngroupstot, double *sumalpha, double *sumlogalpha, double *suminvlambda, double *sumlambda, double *sumloglambda, int *npat, int *ngrouppat, int *gapprox) {
+void simhyperpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, double *rho, double *prob, int *cluslist, int *equalcv, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, int *nrow, double *sumd, double *sumci, double *ngroupstot, double *sumalpha, double *sumlogalpha, double *suminvlambda, double *sumlambda, double *sumloglambda, int *npat, int *ngrouppat, int *gapprox, int *settomean) {
 
 /* Simulates hyper-parameter values from the posterior conditional on all other parameters in the Gamma/Gamma model */
 
 /* Input arguments
+
+   - equalcv:
 
    - a_alpha0, b_alpha0: prior for alpha0 is Gamma(a_alpha0,b_alpha0)
 
@@ -3048,6 +4016,8 @@ void simhyperpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha
 
    - gapprox: for gapprox==0 Gamma with matching mean & var is used, for gapprox==1 a faster version is used
 
+   - settomean: for settomean==1 hyper-par values are set equal to their expected value (condit on all other params)
+
    Output arguments
 
    - alpha0: value drawn for alpha0
@@ -3060,15 +4030,15 @@ void simhyperpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha
 
    - prob: value drawn for prob (mixing probabilities)
 
-   - cluslist: list of clusters that have at list one observation assigned to them
+   - cluslist: list of clusters that have at least one observation assigned to them
 
 */
 
 
 
-  int i, m, one=1, newton=1;
+  int i, m, one=1, newton=5, lengtha=1;
 
-  double b1, sumla, ntot, suma;
+  double b1, sumla, ntot, suma, sumtot, aest, best;
 
 
 
@@ -3082,7 +4052,7 @@ void simhyperpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha
 
       b1= *b_alpha0 + sumloglambda[i];
 
-      rcgammaC(alpha0+i,&one,ngroupstot+i,a_alpha0,&b1,a_nu,b_nu,suminvlambda+i,&newton); //draw alpha0
+      rcgammaC(alpha0+i,&one,ngroupstot+i,a_alpha0,&b1,a_nu,b_nu,suminvlambda+i,&lengtha,&newton); //draw alpha0
 
       nu[i]= 1.0/gengam(*b_nu + alpha0[i]*suminvlambda[i],*a_nu + alpha0[i]*ngroupstot[i]); //draw nu
 
@@ -3114,29 +4084,57 @@ void simhyperpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha
 
   b1= *b_balpha - sumla;
 
-  rcgammaC(balpha,&one,&ntot,a_balpha,&b1,a_nualpha,b_nualpha,&suma,&newton); //draw balpha
-
-  nualpha[0]= 1.0/gengam(*b_nualpha+balpha[0]*suma,*a_nualpha+balpha[0]*ntot); //draw nualpha
+  if (*equalcv == 1) { ntot= *nrow; }
 
 
 
-  if (*nclust > 1) {
+  if (*settomean==1) {
 
-    for (i=0; i<*nclust; i++) { sumci[i]+= p_rho[i]; }                      //draw cluster prob values
+    gapprox_par(&aest,&best,&ntot,a_balpha,&b1,a_nualpha,b_nualpha,&suma,&lengtha,&newton); 
 
-    rdirichlet(rho,sumci,nclust);
+    (*balpha)= aest/best;  //expected value of balpha
 
-  } else {
+    if (*a_nualpha+balpha[0]*ntot>1) (*nualpha)= (*b_nualpha+balpha[0]*suma)/(*a_nualpha+balpha[0]*ntot-1.0); else (*nualpha)= (*b_nualpha+balpha[0]*suma)/(*a_nualpha+balpha[0]*ntot+1.0); //expected value of nualpha. If infinite, set to mode.
 
-    rho[0]= 1;
+    if (*nclust > 1) {
+
+      for (i=0, sumtot=0; i<*nclust; i++) { sumci[i]+= p_rho[i]; sumtot+=sumci[i]; } 
+
+      for (i=0; i<*nclust; i++) rho[i]= sumci[i]/sumtot; //expected value of cluster prob
+
+    } else {
+
+      rho[0]= 1;
+
+    }
+
+    for (i=0, sumtot=0; i<*npat; i++) { sumd[i]+= p_prob[i]; sumtot+= sumd[i]; } 
+
+    for (i=0; i<*npat; i++) { prob[i]= sumd[i]/sumtot; } //expected value of mixing prob
+
+  } else {   //settomean==0
+
+    rcgammaC(balpha,&one,&ntot,a_balpha,&b1,a_nualpha,b_nualpha,&suma,&lengtha,&newton); //draw balpha
+
+    nualpha[0]= 1.0/gengam(*b_nualpha+balpha[0]*suma,*a_nualpha+balpha[0]*ntot); //draw nualpha
+
+    if (*nclust > 1) {
+
+      for (i=0; i<*nclust; i++) { sumci[i]+= p_rho[i]; }                      //draw cluster prob values
+
+      rdirichlet(rho,sumci,nclust);
+
+    } else {
+
+      rho[0]= 1;
+
+    }
+
+    for (i=0; i<*npat; i++) { sumd[i]+= p_prob[i]; }                        //draw mixing prob values
+
+    rdirichlet(prob,sumd,npat);
 
   }
-
-
-
-  for (i=0; i<*npat; i++) { sumd[i]+= p_prob[i]; }                        //draw mixing prob values
-
-  rdirichlet(prob,sumd,npat);
 
 
 
@@ -3144,7 +4142,7 @@ void simhyperpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha
 
 
 
-void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int *nsamples, int *groups, int *K, int *nsel, int *sel, double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, double *rho, double *v, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *gapprox) {
+void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int *nsamples, int *groups, int *K, int *nsel, int *sel, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *v, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *gapprox) {
 
 /* Simulates parameter values and new observations for a select subset of genes and the group indicated by groups from a Gamma/Gamma model
 
@@ -3198,7 +4196,7 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
 
 
-  int i, j, k, m, found, di, ci, ncolsumx, *colini, coldi, one=1, newton=1, usexpred=0;
+  int i, j, k, m, found, di, ci, ncolsumx, *colini, coldi, one=1, newton=2, usexpred=0, lengtha;
 
   double u, rsum, vcum, a, lambda, b1, b2, s, *vclus, *sumxpred, *prodxpred, *nobsxpred;
 
@@ -3250,7 +4248,7 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
 	for (m=0, rsum=1; m<(*nclust); m++) {
 
-	  vclus[m]= pdfcond_pat_clus(i,di,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,usexpred) + log(rho[m]);
+	  vclus[m]= pdfcond_pat_clus(i,di,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,equalcv,usexpred) + log(rho[m]);
 
 	  if (m>0) { vclus[m]= exp(vclus[m]-vclus[0]); rsum+= vclus[m]; }
 
@@ -3272,15 +4270,33 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
       //draw alpha,l 
 
-      coldi= colini[di]+patterns[di*(*K)+groups[k]];
+      if (*equalcv == 1) {
 
-      b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx + coldi]; b2= alpha0[ci]/nu[ci];
+	lengtha= ngrouppat[di];
 
-      s= sumx[sel[i]*ncolsumx + coldi];
+	coldi= colini[di];
 
-      rcgammaC(&a,&one,nobsx+coldi,balpha,&b1,alpha0+ci,&b2,&s,&newton);
+	b1= balpha[0]/nualpha[0] - prodx[sel[i]]; b2= alpha0[ci]/nu[ci];
 
-      lambda= 1.0/gengam(alpha0[ci]/nu[ci] + a*s,alpha0[ci] + a*nobsx[coldi]);
+	rcgammaC(&a,&one,nobsx+coldi,balpha,&b1,alpha0+ci,&b2,sumx+sel[i]*ncolsumx+coldi,&lengtha,&newton);
+
+	lambda= 1.0/gengam(alpha0[ci]/nu[ci] + a*sumx[sel[i]*ncolsumx+coldi+patterns[di*(*K)+groups[k]]],alpha0[ci] + a*nobsx[coldi+patterns[di*(*K)+groups[k]]]);
+
+      } else {
+
+	lengtha= 1;
+
+	coldi= colini[di]+patterns[di*(*K)+groups[k]];
+
+	b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx + coldi]; b2= alpha0[ci]/nu[ci];
+
+	s= sumx[sel[i]*ncolsumx + coldi];
+
+	rcgammaC(&a,&one,nobsx+coldi,balpha,&b1,alpha0+ci,&b2,&s,&lengtha,&newton);
+
+	lambda= 1.0/gengam(alpha0[ci]/nu[ci] + a*s,alpha0[ci] + a*nobsx[coldi]);
+
+      }
 
 
 
@@ -3288,11 +4304,9 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
       xnew[i*(*nsamples)+k]= gengam(a/lambda,a);
 
-
+      anew[i*(*nsamples)+k]= a;
 
       dnew[i*(*nsamples)+k]= di;
-
-      anew[i*(*nsamples)+k]= a;
 
       lnew[i*(*nsamples)+k]= lambda;
 
@@ -3316,7 +4330,7 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
 
 
-void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalpha, double *sumlogalpha, double *suminvlambda, double *sumlambda, double *sumloglambda, int *groups, int *K, int *nrow, double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, double *rho, double *v, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *gapprox) {
+void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalpha, double *sumlogalpha, double *suminvlambda, double *sumlambda, double *sumloglambda, int *groups, int *K, int *nrow, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *v, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *gapprox) {
 
 /* Draws parameter values from the posterior, conditional on hyper-parameter values
 
@@ -3378,7 +4392,7 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
 
 
-  int i, j, m, found, di, ci=0, ncolsumx, *colini, one=1, newton=1, usexpred=0;
+  int i, j, m, found, di, ci=0, ncolsumx, *colini, one=1, newton=2, usexpred=0, lengtha;
 
   double u, vcum, rsum, lambda, a, b1, b2, s, *vclus, *sumxpred, *prodxpred, *nobsxpred;
 
@@ -3450,7 +4464,7 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
       for (m=0, rsum=1; m<(*nclust); m++) {
 
-	vclus[m]= pdfcond_pat_clus(i,di,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,usexpred) + log(rho[m]);
+	vclus[m]= pdfcond_pat_clus(i,di,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,equalcv,usexpred) + log(rho[m]);
 
 	if (m>0) { vclus[m]= exp(vclus[m]-vclus[0]); rsum+= vclus[m]; }
 
@@ -3480,25 +4494,51 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
     // draw alpha and l for each group
 
-    for (j=0; j<ngrouppat[di]; j++) { 
+    if (*equalcv == 1) { 
 
-      b1= balpha[0]/nualpha[0] - prodx[i*ncolsumx + colini[di]+j]; b2= alpha0[ci]/nu[ci];
+      lengtha= ngrouppat[di];
 
-      s= sumx[i*ncolsumx + colini[di]+j];
+      b1= balpha[0]/nualpha[0] - prodx[i]; b2= alpha0[ci]/nu[ci];
 
-      rcgammaC(&a,&one,nobsx+colini[di]+j,balpha,&b1,alpha0+ci,&b2,&s,&newton);
-
-      lambda= 1.0/gengam(alpha0[ci]/nu[ci] + a*s, alpha0[ci] + a*nobsx[colini[di]+j]);
+      rcgammaC(&a,&one,nobsx+colini[di],balpha,&b1,alpha0+ci,&b2,sumx+i*ncolsumx+colini[di],&lengtha,&newton);
 
       sumalpha[ci] += a; sumlogalpha[ci] += log(a);
 
-      suminvlambda[ci] += 1.0/lambda; sumlambda[ci] += lambda; sumloglambda[ci] += log(lambda);
+      //fprintf(ofile,"%f ", a); //debug
 
-      //fprintf(ofile,"%f %f ", a, lambda); //debug
+      for (j=0; j<ngrouppat[di]; j++) {
+
+	lambda= 1.0/gengam(alpha0[ci]/nu[ci] + a*sumx[i*ncolsumx+colini[di]+j], alpha0[ci] + a*nobsx[colini[di]+j]);
+
+	suminvlambda[ci] += 1.0/lambda; sumlambda[ci] += lambda; sumloglambda[ci] += log(lambda);
+
+        //fprintf(ofile,"%f ", lambda); //debug
+
+      }
+
+      //if (di==0) fprintf(ofile,"%f \n",lambda); else fprintf(ofile,"\n"); //debug
+
+    } else {
+
+      lengtha= 1;
+
+      for (j=0; j<ngrouppat[di]; j++) {
+
+	b1= balpha[0]/nualpha[0] - prodx[i*ncolsumx + colini[di]+j]; b2= alpha0[ci]/nu[ci];
+
+	s= sumx[i*ncolsumx + colini[di]+j];
+
+	rcgammaC(&a,&one,nobsx+colini[di]+j,balpha,&b1,alpha0+ci,&b2,&s,&lengtha,&newton);
+
+	lambda= 1.0/gengam(alpha0[ci]/nu[ci] + a*s, alpha0[ci] + a*nobsx[colini[di]+j]);
+
+	sumalpha[ci] += a; sumlogalpha[ci] += log(a);
+
+	suminvlambda[ci] += 1.0/lambda; sumlambda[ci] += lambda; sumloglambda[ci] += log(lambda);
+
+      }
 
     }
-
-    //if (di==0)  { fprintf(ofile,"%f %f \n",a,lambda); } else { fprintf(ofile,"\n"); } //debug
 
   }  //End i for
 
@@ -3520,7 +4560,7 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
 
 
-void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int *deltat, int *groups, int *K, int *nsel, int *sel, int *nrow, int *ncol, double *x, double *alpha0, double *nu, double *balpha, double *nualpha, int *nclust, double *rho, double *v, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
+void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int *deltat, int *groups, int *K, int *nsel, int *sel, int *nrow, int *ncol, double *x, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *v, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
 
 /* Draws parameter values from the posterior and *deltat observations for *K groups from the predictive distribution of a Gamma/Gamma model, conditional on hyper-parameter values
 
@@ -3576,7 +4616,7 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
    - d: if usel==0 returns indicators for expression pattern drawn from the posterior distribution (in the two-group case typically d[i]==0 indicates equal expression and d[i]==1 differential expression). If usel==1 the provided d is used to generate xpred.
 
-   - alpha: if usel==0 returns matrix of *nrow rows, *K columns with alpha draws from the posterior conditional on d. Column i corresponds to group i. If usel==1 the provided alpha is used to generate xpred.
+   - alpha: if usel==0 returns matrix of *nrow rows, *K columns with alpha draws from the posterior conditional on d. Column i corresponds to group i. If usel==1 the provided alpha is used to generate xpred. If equalcv==1 a vector of *nrow rows is returned instead of a matrix.
 
    - l: if usel==0 returns matrix of *nrow rows, *K columns with lambda drawn from the posterior conditional on d, alpha. Column i corresponds to group i. If usel==1 the provided l is used to generate xpred.
 
@@ -3584,7 +4624,7 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
 
 
-  int i, j, m, found, group, di, ci, ncolpred, ncolsumx, *colini, one=1, newton=1, usexpred=0;
+  int i, j, m, found, group, di, ci, ncolpred, ncolsumx, *colini, one=1, newton=2, usexpred=0, lengtha;
 
   double u, rsum, vcum, *lambda, *a, b1, b2, s, *vclus, *sumxpred, *prodxpred, *nobsxpred;
 
@@ -3612,7 +4652,7 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
 
 
-    if ((*usesumx)==0) { compute_sumxC(sumx, prodx, nobsx, nsel, sel, &ncolsumx, ncol, x, groups, K, npat, patterns, ngrouppat, &one); }
+    if ((*usesumx)==0) { compute_sumxC(sumx,prodx,nobsx,equalcv,nsel,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one); }
 
     for (i=0; i<(*nsel); i++) {
 
@@ -3644,7 +4684,7 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
 	for (m=0, rsum=1; m<(*nclust); m++) {
 
-	  vclus[m]= pdfcond_pat_clus(i,di,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,usexpred) + log(rho[m]);
+	  vclus[m]= pdfcond_pat_clus(i,di,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,equalcv,usexpred) + log(rho[m]);
 
 	  if (m>0) { vclus[m]= exp(vclus[m]-vclus[0]); rsum+= vclus[m]; }
 
@@ -3666,31 +4706,61 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
       // draw alpha and l for each group
 
-      a= dvector(0, ngrouppat[di]); lambda= dvector(0, ngrouppat[di]);
+      if (*equalcv == 1) {
 
-      for (j=0; j<ngrouppat[di]; j++) { 
+	lengtha= ngrouppat[di];
 
-	b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx + colini[di]+j]; b2= alpha0[ci]/nu[ci];
+        a= dvector(0, 1); lambda= dvector(0, ngrouppat[di]);
 
-	s= sumx[sel[i]*ncolsumx + colini[di]+j];
+	b1= balpha[0]/nualpha[0] - prodx[sel[i]]; b2= alpha0[ci]/nu[ci];
 
-	rcgammaC(a+j,&one,nobsx+colini[di]+j,balpha,&b1,alpha0+ci,&b2,&s,&newton);
+	rcgammaC(a,&one,nobsx+colini[di],balpha,&b1,alpha0+ci,&b2,sumx+sel[i]*ncolsumx+colini[di],&lengtha,&newton);
 
-        lambda[j]= 1.0/gengam(alpha0[ci]/nu[ci] + a[j]*s, alpha0[ci] + a[j]*nobsx[colini[di]+j]);
+        alpha[sel[i]*(*K)] = a[group];
+
+        for (j=0; j<ngrouppat[di]; j++) { 
+
+          lambda[j]= 1.0/gengam(alpha0[ci]/nu[ci] + a[0]*sumx[sel[i]*ncolsumx+colini[di]+j], alpha0[ci] + a[0]*nobsx[colini[di]+j]);
+
+	  group= patterns[di * (*K) + j];
+
+	  l[sel[i]*(*K)+j] = lambda[group];
+
+	}
+
+	free_dvector(a, 0, 1); free_dvector(lambda, 0, ngrouppat[di]);
+
+      } else {
+
+	lengtha= 1;
+
+        a= dvector(0, ngrouppat[di]); lambda= dvector(0, ngrouppat[di]);
+
+        for (j=0; j<ngrouppat[di]; j++) { 
+
+  	  b1= balpha[0]/nualpha[0] - prodx[sel[i]*ncolsumx + colini[di]+j]; b2= alpha0[ci]/nu[ci];
+
+	  s= sumx[sel[i]*ncolsumx + colini[di]+j];
+
+	  rcgammaC(a+j,&one,nobsx+colini[di]+j,balpha,&b1,alpha0+ci,&b2,&s,&lengtha,&newton);
+
+          lambda[j]= 1.0/gengam(alpha0[ci]/nu[ci] + a[j]*s, alpha0[ci] + a[j]*nobsx[colini[di]+j]);
+
+	}
+
+	for (j=0; j<(*K); j++) {
+
+	  group= patterns[di * (*K) + j];
+
+	  alpha[sel[i]*(*K)+j] = a[group];
+
+	  l[sel[i]*(*K)+j] = lambda[group];
+
+	}
+
+	free_dvector(a, 0, ngrouppat[di]); free_dvector(lambda, 0, ngrouppat[di]);
 
       }
-
-      for (j=0; j<(*K); j++) {
-
-        group= patterns[di * (*K) + j];
-
-	alpha[sel[i]*(*K)+j] = a[group];
-
-        l[sel[i]*(*K)+j] = lambda[group];
-
-      }
-
-      free_dvector(a, 0, ngrouppat[di]); free_dvector(lambda, 0, ngrouppat[di]);
 
     }  //End i for
 
@@ -3786,7 +4856,7 @@ void simpred_oldggC(double *xpred, int *d, double *l, int *usel, int *deltat, in
 
 
 
-  int i, j, p, found, group, di, ncolpred, ncolsumx, *colini, one=1, *sel;
+  int i, j, p, found, group, di, ncolpred, ncolsumx, *colini, one=1, *sel, equalcv=1;
 
   double u, vcum, *lambda, *prodx;
 
@@ -3802,7 +4872,7 @@ void simpred_oldggC(double *xpred, int *d, double *l, int *usel, int *deltat, in
 
   ncolsumx= colini[(*npat)-1] + ngrouppat[(*npat)-1];
 
-  prodx= dvector(0,(*nrow)*(ncolsumx));
+  prodx= dvector(0,(*nrow));
 
   if ((*usesumx)==0) { 
 
@@ -3810,7 +4880,7 @@ void simpred_oldggC(double *xpred, int *d, double *l, int *usel, int *deltat, in
 
     for (i=0; i<(*nrow); i++) { sel[i]= i; }
 
-    compute_sumxC(sumx,prodx,nobsx,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
+    compute_sumxC(sumx,prodx,nobsx,&equalcv,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
 
     free_ivector(sel,0,*nrow);
 
@@ -3890,7 +4960,7 @@ void simpred_oldggC(double *xpred, int *d, double *l, int *usel, int *deltat, in
 
   free_ivector(colini,0,*npat);
 
-  free_dvector(prodx,0,(*nrow)*(ncolsumx));
+  free_dvector(prodx,0,(*nrow));
 
 
 
@@ -3908,7 +4978,7 @@ void simpred_oldggC(double *xpred, int *d, double *l, int *usel, int *deltat, in
 
 
 
-void dcgammaC(double *y, double *normk, double *x, int *n, double *a, double *b, double *c, double *d, double *r, double *s,  int *newton) {
+void dcgammaC(double *y, double *normk, double *x, int *n, double *a, double *b, double *c, double *d, double *r, double *s, int *lengtha, int *newton) {
 
   /* Returns density of a conjugate gamma shape distribution evaluated at x */
 
@@ -3922,6 +4992,8 @@ void dcgammaC(double *y, double *normk, double *x, int *n, double *a, double *b,
 
      - a,b,c,d,r,s,p: parameters
 
+     - lengtha: length of vectors a, s.
+
      Output: 
 
      - y: density of a conjugate gamma shape distribution with parameters a,b,c evaluated at x
@@ -3934,13 +5006,13 @@ void dcgammaC(double *y, double *normk, double *x, int *n, double *a, double *b,
 
 
 
-gapprox_par(&aest,&best,a,b,c,d,r,s,newton);   //Find parameters of approximating Gamma
+gapprox_par(&aest,&best,a,b,c,d,r,s,lengtha,newton);   //Find parameters of approximating Gamma
 
 
 
 //Find normalization constant & approximate Gamma density
 
- *normk= kcgammaC(a,b,c,d,r,s,newton,&logscale);
+*normk= kcgammaC(a,b,c,d,r,s,lengtha,newton,&logscale);
 
 for (i=0; i<(*n); i++) { y[i]= exp(aest*log(best) - gamln(&aest) + (aest-1)*log(x[i])-best*x[i]); }
 
@@ -3950,7 +5022,7 @@ for (i=0; i<(*n); i++) { y[i]= exp(aest*log(best) - gamln(&aest) + (aest-1)*log(
 
 
 
-double kcgammaC(double *a, double *b, double *c, double *d, double *r, double *s, int *newton, int *logscale) {
+double kcgammaC(double *a, double *b, double *c, double *d, double *r, double *s, int *lengtha, int *newton, int *logscale) {
 
 /* Finds normalization constant for a conjugate gamma shape distribution */
 
@@ -3960,7 +5032,9 @@ double kcgammaC(double *a, double *b, double *c, double *d, double *r, double *s
 
      - a,b,c,d,r,s: parameters
 
-     - log: log==0 returns result in original scale, log==1 in log scale
+     - lengtha: length of vectors a, s.
+
+     - logscale: logscale==0 returns result in original scale, logscale==1 in log scale
 
    Output: normalization constant 
 
@@ -3974,7 +5048,7 @@ double kcgammaC(double *a, double *b, double *c, double *d, double *r, double *s
 
 
 
-gapprox_par(&aest,&best,a,b,c,d,r,s,newton);   //Find parameters of approximating Gamma
+gapprox_par(&aest,&best,a,b,c,d,r,s,lengtha,newton);   //Find parameters of approximating Gamma
 
 
 
@@ -3982,7 +5056,7 @@ gapprox_par(&aest,&best,a,b,c,d,r,s,newton);   //Find parameters of approximatin
 
 if (aest>1) { m= (aest-1)/best; } else { m= aest/best; }
 
-ans= logcgammaf(m,*a,*b,*c,*d,*r,*s) - aest*log(best)+gamln(&aest) - (aest-1)*log(m)+best*m;
+ans= logcgammaf(m,a,*b,*c,*d,*r,s,*lengtha) - aest*log(best)+gamln(&aest) - (aest-1)*log(m)+best*m;
 
 if (*logscale == 0) return(exp(ans)); else return(ans);
 
@@ -3992,13 +5066,15 @@ if (*logscale == 0) return(exp(ans)); else return(ans);
 
 
 
-void mcgammaC(double *normk, double *m, double *v, double *a, double *b, double *c, double *d, double *r, double *s,  int *newton) {
+void mcgammaC(double *normk, double *m, double *v, double *a, double *b, double *c, double *d, double *r, double *s,  int *lengtha, int *newton) {
 
 /* Computes mean & variance for a conjugate gamma shape distribution */
 
 /* Input:
 
      - a,b,c,d,r,s,p: parameters
+
+     - lengtha: length of vectors a, s.
 
    Output: 
 
@@ -4014,13 +5090,13 @@ void mcgammaC(double *normk, double *m, double *v, double *a, double *b, double 
 
 
 
-gapprox_par(&aest,&best,a,b,c,d,r,s,newton);   //Find parameters of approximating Gamma
+gapprox_par(&aest,&best,a,b,c,d,r,s,lengtha,newton);   //Find parameters of approximating Gamma
 
 
 
 //Compute approx moments & norm constant
 
- *normk= kcgammaC(a,b,c,d,r,s,newton,&logscale);
+*normk= kcgammaC(a,b,c,d,r,s,lengtha,newton,&logscale);
 
 *m= aest/best;
 
@@ -4032,7 +5108,7 @@ gapprox_par(&aest,&best,a,b,c,d,r,s,newton);   //Find parameters of approximatin
 
 
 
-void rcgammaC(double *x, int *n, double *a, double *b, double *c, double *d, double *r, double *s,  int *newton) {
+void rcgammaC(double *x, int *n, double *a, double *b, double *c, double *d, double *r, double *s, int *lengtha, int *newton) {
 
 /* Generates random draws from a conjugate gamma shape distribution by approximating it with a Gamma */
 
@@ -4041,6 +5117,8 @@ void rcgammaC(double *x, int *n, double *a, double *b, double *c, double *d, dou
    - n: number of random draws to generate (length of x)
 
    - a,b,c,d,r,s,p: parameters
+
+   - lengtha: length of vectors a, s.
 
    Output:
 
@@ -4054,7 +5132,7 @@ void rcgammaC(double *x, int *n, double *a, double *b, double *c, double *d, dou
 
 
 
-gapprox_par(&aest,&best,a,b,c,d,r,s,newton);   //Find parameters of approximating Gamma
+gapprox_par(&aest,&best,a,b,c,d,r,s,lengtha,newton);   //Find parameters of approximating Gamma
 
 for (i=0; i<(*n); i++) { x[i]= gengam(best,aest); }  //Generate random variates
 
@@ -4064,31 +5142,139 @@ for (i=0; i<(*n); i++) { x[i]= gengam(best,aest); }  //Generate random variates
 
 
 
-void gapprox_par(double *aest, double *best, double *a, double *b, double *c, double *d, double *r, double *s, int *newton) {
+void gapprox_par(double *aest, double *best, double *a, double *b, double *c, double *d, double *r, double *s, int *lengtha, int *newton) {
 
 //Find parameters of approximating Gamma
 
-//Input: a,b,c,d,r,s,p parameters. For newton==1 a Newton step is taken to find the mode of the distribution.
+/* Input: 
 
-//Output: aest, best are the parameters of the approximating Gamma
+     - a,b,c,d,r,s,p parameters. 
 
-  double m, mnew, fp, fpp, step;
+     - lengtha: length of vectors a, s.
+
+     - newton: number of Newton steps to take to find the mode of the distribution.
+
+
+
+   Output: aest, best are the parameters of the approximating Gamma
+
+*/
+
+  int i; double m, mnew, fp, fpp, step;
 
 
 
 //Gamma approx based on Stiling's formula
 
-if (*a == 0) {    //for a==0 && d==0 distribution is exactly Gamma
+if (*lengtha == 1) {
 
-  *aest = *b - *d;
+  if (*a == 0) {    //for a==0 && d==0 distribution is exactly Gamma
 
-  *best = *c;
+    *aest = *b - *d;
 
-} else {    
+    *best = *c;
 
-  *aest = *b + .5*(*a) - .5;
+  } else {    
 
-  *best = *c + (*a)*log((*s)/(*a));
+    *aest = *b + .5*(*a) - .5;
+
+    *best = *c + (*a)*log((*s)/(*a));
+
+  }
+
+} else {
+
+  for (i=0,*aest= *b,*best= *c; i<(*lengtha); i++) {
+
+    *aest += .5*a[i] - .5;
+
+    *best += a[i]*log(s[i]/a[i]);
+
+  }
+
+}
+
+
+
+//Newton step to better locate the maximum of the distrib
+
+for (i=0, step=1, fpp=-1; (i< *newton) && (*aest>1) && (fabs(step)>.01) && (fpp<0); i++) {
+
+  m= (*aest-1)/(*best);
+
+  fp= logcgammafp(m,a,*b,*c,*d,*r,s,*lengtha); 
+
+  fpp= logcgammafpp(m,a,*b,*c,*d,*r,s,*lengtha);
+
+  step= fp/fpp;
+
+  if ((fpp<0) && (logcgammaf(m,a,*b,*c,*d,*r,s,*lengtha)<logcgammaf(m-step,a,*b,*c,*d,*r,s,*lengtha))) { 
+
+    *aest = 1 - (m-step)*(m-step)*fpp; 
+
+    *best = -(m-step)*fpp;
+
+  }
+
+}
+
+
+
+}
+
+
+
+
+
+
+
+//void gapprox_par(double *aest, double *best, double *a, double *b, double *c, double *d, double *r, double *s, int *lengtha, int *newton) {
+
+//Find parameters of approximating Gamma
+
+/* Input: 
+
+     - a,b,c,d,r,s,p parameters. For newton==1 a Newton step is taken to find the mode of the distribution.
+
+     - lengtha: length of vectors a, s.
+
+
+
+   Output: aest, best are the parameters of the approximating Gamma
+
+*/
+
+/*  int i; double m, mnew, fp, fpp, step;
+
+
+
+//Gamma approx based on Stiling's formula
+
+if (*lengtha == 1) {
+
+  if (*a == 0) {    //for a==0 && d==0 distribution is exactly Gamma
+
+    *aest = *b - *d;
+
+    *best = *c;
+
+  } else {    
+
+    *aest = *b + .5*(*a) - .5;
+
+    *best = *c + (*a)*log((*s)/(*a));
+
+  }
+
+} else {
+
+  for (i=0,*aest= *b,*best= *c; i<(*lengtha); i++) {
+
+    *aest += .5*a[i] - .5;
+
+    *best += a[i]*log(s[i]/a[i]);
+
+  }
 
 }
 
@@ -4100,19 +5286,19 @@ if ((*newton == 1) && (*aest > 1)) {
 
   m= (*aest-1)/(*best);
 
-  fp= logcgammafp(m,*a,*b,*c,*d,*r,*s); 
+  fp= logcgammafp(m,a,*b,*c,*d,*r,s,*lengtha); 
 
-  fpp= logcgammafpp(m,*a,*b,*c,*d,*r,*s);
+  fpp= logcgammafpp(m,a,*b,*c,*d,*r,s,*lengtha);
 
   step= fp/fpp;
 
-  if ((fabs(step) > .1) && (fpp<0) && (logcgammaf(m,*a,*b,*c,*d,*r,*s)<logcgammaf(m-step,*a,*b,*c,*d,*r,*s))) { 
+  if ((fabs(step) > .05) && (fpp<0) && (logcgammaf(m,a,*b,*c,*d,*r,s,*lengtha)<logcgammaf(m-step,a,*b,*c,*d,*r,s,*lengtha))) { 
 
     mnew= m- step;
 
-    fp= logcgammafp(mnew,*a,*b,*c,*d,*r,*s);
+    fp= logcgammafp(mnew,a,*b,*c,*d,*r,s,*lengtha);
 
-    fpp= logcgammafpp(mnew,*a,*b,*c,*d,*r,*s);
+    fpp= logcgammafpp(mnew,a,*b,*c,*d,*r,s,*lengtha);
 
     m= mnew;
 
@@ -4128,39 +5314,57 @@ if ((*newton == 1) && (*aest > 1)) {
 
 }
 
-
+*/
 
 
 
 //Log-density of conjugate Gamma and its derivaties
 
-double logcgammaf(double x, double a, double b, double c, double d, double r, double s) {
+double logcgammaf(double x, double *a, double b, double c, double d, double r, double *s, int lengtha) {
 
-    double t1;
+  int i; double t1, ans;
 
-    t1= a*x+d;
+  for (i=0, ans=(b-d*(.0+lengtha)-1)*log(x) - x*c; i<lengtha; i++) {
 
-    return(gamln(&t1)- a*gamln(&x) + (a*x+d)*(log(x/(r+s*x))) + (b-d-1)*log(x) - x*c);
+    t1= a[i]*x+d;
+
+    ans+= gamln(&t1)- a[i]*gamln(&x) + (a[i]*x+d)*(log(x/(r+s[i]*x)));
+
+  }
+
+  return(ans);
 
  }
 
-double logcgammafp(double x, double a, double b, double c, double d, double r, double s) { 
+double logcgammafp(double x, double *a, double b, double c, double d, double r, double *s, int lengtha) { 
 
-    double t1;
+  int i; double t1, ans;
 
-    t1= a*x+d;
+  for (i=0, ans=(b-d*(.0+lengtha)-1)/x - c; i<lengtha; i++) {
 
-    return(a*(digamma(t1)-digamma(x)+log(x/(r+s*x))) + t1*r/(r*x+s*x*x) + (b-d-1)/x - c);
+    t1= a[i]*x+d;
+
+    ans+= a[i]*(digamma(t1)-digamma(x)+log(x/(r+s[i]*x))) + t1*r/(r*x+s[i]*x*x);
+
+  }
+
+  return(ans);
 
 }
 
-double logcgammafpp(double x, double a, double b, double c, double d, double r, double s) { 
+double logcgammafpp(double x, double *a, double b, double c, double d, double r, double *s, int lengtha) { 
 
-    double t1;
+  int i; double t1, ans;
 
-    t1= a*x+d;
+  for (i=0, ans= -(b-d*(.0+lengtha)-1)/(x*x); i<lengtha; i++) {
 
-    return(a*(a*trigamma(t1)-trigamma(x))+r/(r*x+s*x*x)*(2*a-(a*x+d)*(r+s*2*x)/(r*x+s*x*x)) - (b-d-1)/(x*x));
+    t1= a[i]*x+d;
+
+    ans+= a[i]*(a[i]*trigamma(t1)-trigamma(x))+r/(r*x+s[i]*x*x)*(2*a[i]-(a[i]*x+d)*(r+s[i]*2*x)/(r*x+s[i]*x*x));
+
+  }
+
+  return(ans);
 
 }
 
