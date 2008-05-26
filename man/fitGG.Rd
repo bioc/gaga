@@ -21,7 +21,9 @@ fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "SA", B, priorpa
     corresponds to.}
   \item{patterns}{Matrix indicating which groups are put together under
     each pattern, i.e. the hypotheses to consider for each
-    gene. Defaults to two hypotheses: null hypothesis of all groups
+    gene. \code{colnames(patterns)} must match the group levels
+    specified in \code{groups}.
+    Defaults to two hypotheses: null hypothesis of all groups
     being equal and full alternative of all groups being different.}
   \item{equalcv}{\code{equalcv==TRUE} fits model assuming constant CV across groups. \code{equalcv==FALSE} compares cv as well as mean expression levels between groups}
   \item{nclust}{Number of clusters in the MiGaGa model. \code{nclust}
@@ -31,12 +33,15 @@ fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "SA", B, priorpa
     the same using Gibbs sampling. \code{method=='SA'} uses Simulated
     Annealing to find the posterior mode. \code{method=='EM'} finds
     maximum-likelihood estimates via the expectation-maximization
-    algorithm, but this is currently only implemented for \code{nclust>1}. }
-  \item{B}{ For \code{method=='MH'} and \code{method=='Gibbs'}, \code{B}
+    algorithm, but this is currently only implemented for
+    \code{nclust>1}. \code{method=='quickEM'} is a quicker
+    implementation that only performs 2 optimization steps (see details).}
+  \item{B}{ Number of iterations. For \code{method=='MH'} and \code{method=='Gibbs'}, \code{B}
     is the number of MCMC iterations (defaults to 1000). For
     \code{method=='SA'}, \code{B} is the number of iterations in the
     Simulated Annealing scheme (defaults to 200). For
-    \code{method=='EM'}, \code{B} is ignored. }
+    \code{method=='EM'}, \code{B} is the maximum number of iterations
+    (defaults to 20). }
   \item{priorpar}{ List with prior parameter values. It must have
     components \code{a.alpha0,b.alpha0,a.nu,b.nu,a.balpha,b.balpha,a.nualpha,b.nualpha,p.probclus}
     and \code{p.probpat}. If missing they are set to non-informative
@@ -56,6 +61,12 @@ fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "SA", B, priorpa
 
   The cooling scheme in \code{method=='SA'} uses a temperature equal to
   \code{1/log(1+i)}, where \code{i} is the iteration number.
+
+  The EM implementation in \code{method=='quickEM'} is a quick EM
+  algorithm that usually delivers hyper-parameter estimates very similar
+  to those obtained via the slower \code{method=='EM'}. Additionally,
+  the GaGa model inference has been seen to be robust to moderate
+  changes in the hyper-parameter estimates in most datasets.
 }
 \value{ An object of class \code{gagafit}, with components
   \item{parest }{Hyper-parameter estimates. Only returned if \code{method=='EBayes'}, for \code{method=='Bayes'} one must call the function \code{parest} after \code{fitGG}}
@@ -77,8 +88,9 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
 library(gaga)
 library(EBarrays); data(gould)
 x <- log(gould[1:100,-1])  #select 100 genes so that it runs very fast. Exclude 1st array
-groups <- c(1,1,2,2,2,2,2,3,3) #group each array corresponds to
+groups <- c('group1','group1','group2','group2','group2','group2','group2','group3','group3') #group each array corresponds to
 patterns <- rbind(rep(0,3),c(0,0,1),c(0,1,1),0:2) #4 hypothesis
+colnames(patterns) <- c('group1','group2','group3') #colnames(patterns) must match codes in groups
 
 #Frequentist fit: EM algorithm to obtain MLE
 gg1 <- fitGG(x,groups,patterns,method='EM')

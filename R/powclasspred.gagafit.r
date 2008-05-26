@@ -1,18 +1,5 @@
 powclasspred.gagafit <- function(gg.fit,x,groups,prgroups,v0thre=1,ngene=100,B=100) {
-# Estimates expected probability that a future sample is correctly classified.
-# Input
-# - gg.fit: fitted Gamma/Gamma model
-# - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
-# - groups: vector indicating what group each column in x corresponds to
-# - prgroups: prior probabilities for each group. Defaults to equally probable groups.
-# - v0thre: genes with v0>v0thre (prob of being equally expressed across all groups) are not used to classify samples. If no genes make the threshold, the classification is based on the gene with the smallest v0.
-# - ngene: number of genes to be used to classify sample, starting with those having lowest prob of being equally expressed across all groups
-# - B: maximum number of MC iterations to be used
-# Output
-# - ccall: estimated overall probability of correctly classifying a sample
-# - seccall: standard error of the ccall estimate
-# - ccgroup: estimated probability of correctly classifying a sample from group k
-# - segroup: standard error of the ccgroup estimate
+# Estimate expected probability that a future sample is correctly classified.
 
 gapprox <- TRUE
 patterns <- gg.fit$patterns
@@ -32,7 +19,7 @@ genelimit <- as.integer(genelimit); v0thre <- as.double(v0thre)
 usesel <- as.integer(0); nsel <- as.integer(0); sel <- integer(nrow(x))
 
 npat <- as.integer(nrow(patterns))
-groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
+groupsr <- groups2int(groups,patterns); K <- as.integer(max(groupsr)+1)
 if (missing(prgroups)) prgroups <- rep(1/K,K)
 if (ncol(patterns)!=K) stop('patterns must have number of columns equal to the number of distinct elements in groups')
 for (i in 1:nrow(patterns)) { patterns[i,] <- as.integer(as.integer(as.factor(patterns[i,]))-1) }
@@ -50,7 +37,7 @@ ccall <- seccall <- double(1); ccgroup <- double(K); ngroup <- integer(K); prece
 
 v <- ppGG(x=x,groups=groups,a0=a0,nu=nu,balpha=balpha,nualpha=nualpha,equalcv=gg.fit$equalcv,probclus=probclus,probpat=probpat,patterns=patterns)$pp
 
-z <- .C("utsample_ggC",ccall=ccall,seccall=seccall,ccgroup=ccgroup,ngroup=ngroup,as.integer(B),preceps,genelimit,v0thre,nsel,sel,usesel,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groups),as.double(t(v)),K,as.double(prgroups),a0,nu,balpha,nualpha,as.integer(gg.fit$equalcv),nclust,probclus,probpat,npat,as.integer(t(patterns)),ngrouppat,ncolsumx,sumx,prodx,nobsx,usesumx,gapprox)
+z <- .C("utsample_ggC",ccall=ccall,seccall=seccall,ccgroup=ccgroup,ngroup=ngroup,as.integer(B),preceps,genelimit,v0thre,nsel,sel,usesel,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groupsr),as.double(t(v)),K,as.double(prgroups),a0,nu,balpha,nualpha,as.integer(gg.fit$equalcv),nclust,probclus,probpat,npat,as.integer(t(patterns)),ngrouppat,ncolsumx,sumx,prodx,nobsx,usesumx,gapprox)
 
 ccgroup <- z$ccgroup/z$ngroup
 return(list(ccall=z$ccall,seccall=z$seccall,ccgroup=ccgroup,segroup=ccgroup*(1-ccgroup)/sqrt(z$ngroup)))

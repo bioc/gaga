@@ -3,9 +3,10 @@ parest.gagafit <- function(gg.fit,x,groups,burnin,alpha=.05) {
 if (missing(x)) stop('argument x must be specified')
 if (missing(groups)) stop('argument groups must be specified')
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
+groupsr <- groups2int(groups,gg.fit$patterns)
 
 nclust <- gg.fit$nclust
-if (gg.fit$method=='EM') {
+if (gg.fit$method=='EM' | gg.fit$method=='quickEM') {
   a0 <- gg.fit$parest[1]; nu <- gg.fit$parest[2]
   balpha <- gg.fit$parest[3]; nualpha <- gg.fit$parest[4]
   probclus <- 1; probpat <- gg.fit$parest[-1:-5]

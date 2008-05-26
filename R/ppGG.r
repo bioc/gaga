@@ -6,7 +6,9 @@ if (is(x, "exprSet") | is(x,"ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
-groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
+
+groupsr <- groups2int(groups,patterns)
+K <- as.integer(max(groupsr)+1)
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
 if (missing(a0)) stop('a0 must be specified')
 if (missing(nu)) stop('nu must be specified')
@@ -33,7 +35,7 @@ if (as.logical(equalcv)) {
 }
 nsel <- nrow(x); sel <- as.integer(0:(nsel-1))
 cluslist <- as.integer(c((0:(length(probclus)-1)),-1))
-z <- .C("pp_ggC",v=v,lhood=lhood,nsel,sel,as.integer(ncol(x)),as.double(t(x)),groups,as.integer(ncol(patterns)),as.double(a0),as.double(nu),as.double(balpha),as.double(nualpha),as.integer(equalcv),as.integer(length(probclus)),cluslist,as.double(t(probclus)),as.double(t(probpat)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,usesumx,as.integer(gapprox))
+z <- .C("pp_ggC",v=v,lhood=lhood,nsel,sel,as.integer(ncol(x)),as.double(t(x)),groupsr,as.integer(ncol(patterns)),as.double(a0),as.double(nu),as.double(balpha),as.double(nualpha),as.integer(equalcv),as.integer(length(probclus)),cluslist,as.double(t(probclus)),as.double(t(probpat)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,usesumx,as.integer(gapprox))
 v <- matrix(z$v,nrow=nrow(x),byrow=TRUE)
 
 return(list(pp=v,lhood=z$lhood))

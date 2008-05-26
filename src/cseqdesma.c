@@ -2270,6 +2270,52 @@ free_dvector(v0,0,(*nsel));
 
 
 
+void geneclus(int *d, double *ppat, int *nsel, int *sel, double *v, int *npat) {
+
+/* Classifies each gene into the highest posterior probability pattern */
+
+/* Input arguments
+
+    nsel: terminal decisions are only taken for nsel genes with lowest prob of being equally expressed
+
+    sel: indexes of the nsel genes
+
+    v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+
+    npat: number of columns of v
+
+*/
+
+/* Output arguments
+
+    d: pattern to which each gene is assigned to
+
+    ppat: posterior probability of the assigned pattern
+
+*/
+
+
+
+int i, j, jopt;
+
+
+
+  for (i=0; i<(*nsel); i++) {                          
+
+    for (j=1, jopt=0; j<(*npat); j++) { if (v[sel[i]*(*npat)+j]>v[sel[i]*(*npat)+jopt]) jopt= j; }
+
+    d[sel[i]]= jopt;
+
+    ppat[sel[i]]= v[sel[i]*(*npat)+jopt];
+
+  }                                                    
+
+
+
+}
+
+
+
 
 
 void sel_mostDEgenes(int *nsel, int *sel, int *genelimit, double *v0thre, int *nrow, int *npat, double *v) {

@@ -20,6 +20,7 @@ void rproposal(double *alpha0new, double *nunew, double *balphanew, double *nual
 void maxwtpfp(double *u, int *d, double *fdr, double *fnr, double *cf, int *nsel, int *sel, double *v, int *npat);
 void minfnrstfdr(double *u, double *threshold, int *d, double *fdr, double *fnr, double *power, int *nsel, int *sel, double *v, int *npat, double *fdrmax);
 void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *rho, double *prob, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox);
+void geneclus(int *d, double *ppat, int *nsel, int *sel, double *v, int *npat);
 void sel_mostDEgenes(int *nsel, int *sel, int *genelimit, double *v0thre, int *nrow, int *npat, double *v);
 void uobsgeneC(double *u, double *fdr, double *fnr, int *util, int *nsel, int *sel, int *d, int *trued, double *cf);
 void utgene_parC(double *u, int *d, double *fdr, double *fnr, double *power, double *threshold, int *util, double *cf, int *nsel, int *sel, double *v, int *npat, double *fdrmax);

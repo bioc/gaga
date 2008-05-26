@@ -9,11 +9,13 @@ if (is(x, "exprSet") | is(x,"ExpressionSet")) {
 
 patterns <- gg.fit$patterns
 v <- gg.fit$pp
-groupstemp <- factor(groups)
-groupsnew <- factor(groupsnew,levels=levels(groupstemp))
-groups <- as.integer(as.integer(groupstemp)-1); K <- as.integer(max(groups)+1)
-groupsnew <- as.integer(as.integer(groupsnew)-1)
-if ((max(groupsnew)>max(groups)) | (min(groupsnew)<min(groups))) stop('Groups indicated in groupsnew do not match with those indicated in groups')
+
+groupsr <- groups2int(groups,patterns); K <- as.integer(max(groupsr)+1)
+groupsnewr <- integer(length(groups))
+for (i in 1:ncol(patterns)) { groupsnewr[groupsnew == colnames(patterns)[i]] <- i - 1 }
+groupsnewr <- as.integer(groupsnewr)
+
+if ((max(groupsnewr)>max(groupsr)) | (min(groupsnewr)<min(groupsr))) stop('Groups indicated in groupsnew do not match with those indicated in groups')
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
 if (!is.matrix(v)) stop('Argument v must be a matrix')
 if (ncol(v)!=nrow(patterns)) stop('Argument v must have as many columns as rows has patterns')
@@ -37,23 +39,23 @@ gapprox <- as.integer(gapprox)
 if (missing(sel)) sel <- 1:nrow(x)
 if (is.logical(sel)) sel <- (1:nrow(x))[sel]
 sel <- as.integer(sel-1) #in C indices start at 0
-nsel <- length(sel); nsamples <- length(groupsnew)
+nsel <- length(sel); nsamples <- length(groupsnewr)
 xnew <- anew <- lnew <- double(nsel*nsamples); dnew <- integer(nsel*nsamples)
 
-z <- .C("compute_sumxC",sumx=t(sumx),prodx=t(prodx),nobsx=nobsx,as.integer(gg.fit$equalcv),nsel,sel,as.integer(sum(ngrouppat)),ncol(x),as.double(t(x)),groups,K,as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,as.integer(1))
+z <- .C("compute_sumxC",sumx=t(sumx),prodx=t(prodx),nobsx=nobsx,as.integer(gg.fit$equalcv),nsel,sel,as.integer(sum(ngrouppat)),ncol(x),as.double(t(x)),groupsr,K,as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,as.integer(1))
 sumx <- matrix(z$sumx,nrow=nrow(x),byrow=TRUE); prodx <- matrix(z$prodx,nrow=nrow(x),byrow=TRUE)
 nobsx <- z$nobsx
 
-z <- .C("simnewsamples_ggC",xnew=xnew,dnew=dnew,anew=anew,lnew=lnew,nsamples,groupsnew,K,nsel,sel,alpha0,nu,balpha,nualpha,as.integer(gg.fit$equalcv),nclust,rho,as.double(t(v)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,t(sumx),t(prodx),nobsx,gapprox)
+z <- .C("simnewsamples_ggC",xnew=xnew,dnew=dnew,anew=anew,lnew=lnew,nsamples,groupsnewr,K,nsel,sel,alpha0,nu,balpha,nualpha,as.integer(gg.fit$equalcv),nclust,rho,as.double(t(v)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,t(sumx),t(prodx),nobsx,gapprox)
 
 metadata <- data.frame(labelDescription='Group that each array belongs to',row.names='group')
 pheno <- new("AnnotatedDataFrame", data=data.frame(group=groupsnew), dimLabels=c("rowNames", "columnNames"), varMetadata=metadata)
 sampleNames(pheno) <- paste("Array",1:nrow(pheno))
 
-metadata <- data.frame(labelDescription=c(paste('Expression patterns for array',1:length(groupsnew)),paste('alpha parameters for array',1:length(groupsnew)),paste('mean parameters for array',1:length(groupsnew))),row.names=c(paste('d',1:length(groupsnew),sep='.'),paste('alpha',1:length(groupsnew),sep='.'),paste('mean',1:length(groupsnew),sep='.')))
+metadata <- data.frame(labelDescription=c(paste('Expression patterns for array',1:length(groupsnewr)),paste('alpha parameters for array',1:length(groupsnewr)),paste('mean parameters for array',1:length(groupsnewr))),row.names=c(paste('d',1:length(groupsnewr),sep='.'),paste('alpha',1:length(groupsnewr),sep='.'),paste('mean',1:length(groupsnewr),sep='.')))
 fdata <- new("AnnotatedDataFrame", data=data.frame(matrix(z$dnew,nrow=nsel,byrow=TRUE),matrix(z$anew,nrow=nsel,byrow=TRUE),matrix(z$lnew,nrow=nsel,byrow=TRUE)),varMetadata=metadata)
 sampleNames(fdata) <- paste("Gene",1:nrow(fdata))
-varLabels(fdata) <- c(paste('d',1:length(groupsnew),sep='.'),paste('alpha',1:length(groupsnew),sep='.'),paste('mean',1:length(groupsnew),sep='.'))
+varLabels(fdata) <- c(paste('d',1:length(groupsnewr),sep='.'),paste('alpha',1:length(groupsnewr),sep='.'),paste('mean',1:length(groupsnewr),sep='.'))
 
 experimentData <- new("MIAME", title = "Dataset simulated with simnewsamples", abstract = "This dataset contains expression data simulated from the posterior predictive distribution of a GaGa or MiGaGa. The expression data can be accessed via exprs(object), and the parameter values used to generate the data through fData(object)")
 

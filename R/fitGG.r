@@ -1,7 +1,7 @@
 fitGG <- function(x,groups,patterns,equalcv=TRUE,nclust=1,method='SA',B,priorpar,parini,trace=TRUE) {
 
 #Input processing: check errors, format and set missing parameters to default
-if (missing(B)) { if (method=='SA') { B <- 200 } else { B <- 1000 } }
+if (missing(B)) { if (method=='SA') { B <- 200 } else if (method=='MH' | method=='Gibbs') { B <- 1000 } else { B <- 20 } }
 gapprox <- TRUE
 if (is(x, "exprSet") | is(x, "ExpressionSet")) {
   if (is.character(groups)) { groups <- as.factor(pData(x)[, groups]) }
@@ -9,11 +9,13 @@ if (is(x, "exprSet") | is(x, "ExpressionSet")) {
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, exprSet, data.frame or matrix") }
 if (min(x)<0) stop("x can only have positive values")
 if (sum(is.na(x))>0) stop("x cannot have any NA values")
-groups <- as.numeric(groups); groups <- as.integer(as.integer(factor(groups,levels=names(table(groups))))-1)
-K <- as.integer(max(groups)+1)
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
-if (missing(patterns)) patterns <- rbind(rep(0,K),0:(K-1))
-if (length(table(groups))!=ncol(patterns)) stop('patterns must have the same number of columns as the number of distinct groups')
+
+K <- length(unique.default(groups))
+if (missing(patterns)) { patterns <- rbind(rep(0,K),0:(K-1)); colnames(patterns) <- unique.default(groups) }
+groupsr <- groups2int(groups,patterns)
+
+if (length(table(groupsr))!=ncol(patterns)) stop('patterns must have the same number of columns as the number of distinct groups')
 if (ncol(patterns)!=K) stop('patterns must have number of columns equal to the number of distinct elements in groups')
 if (sum(is.na(patterns))>0) stop('patterns cannot have any NA values')
 if (sum(is.nan(patterns))>0) stop('patterns cannot have any NaN values')
@@ -44,7 +46,13 @@ if (missing(parini)) {
   if (trace) cat(' Done.\n')
   if (trace) cat('Refining initial estimates...')
   probpatini <- rep(1/nrow(patterns),nrow(patterns))
-  for (i in 1:5) { probpatini <- colMeans(ppGG(x,groups,a0ini,nuini,balphaini,nualphaini,equalcv,probclusini,probpatini,patterns)$pp) }
+  eps <- 1; i <- 1
+  while ((eps>.001) && (i<=B)) {
+    probnew <- colMeans(ppGG(x,groups,a0ini,nuini,balphaini,nualphaini,equalcv,probclusini,probpatini,patterns)$pp)
+    eps <- max(abs(probnew-probpatini))
+    probpatini <- probnew
+    i <- i+1
+  }
   if (trace) cat(' Done.\n')
 } else {
   if (is.null(parini$a0) | is.null(parini$nu) | is.null(parini$balpha) | is.null(parini$nualpha) | is.null(parini$probpat)) stop('some components of parini are empty')
@@ -54,11 +62,11 @@ if (missing(parini)) {
 }
 
 
-if (method=='EM') {
+if (method=='EM' | method=='quickEM') {
 
   if (nclust>1) stop('nclust>1 is not currently implemented for empirical Bayes method')
   if (trace) cat('Starting EM algorithm...\n')
-  z <- fitfreqGG(x,groups,patterns,nclust=1,a0ini,nuini,balphaini,nualphaini,probpatini,equalcv,iter.max=100,trace=trace)
+  z <- fitfreqGG(x,groups,patterns,method,nclust=1,a0ini,nuini,balphaini,nualphaini,probpatini,equalcv,iter.max=B,trace=trace) #pass groups instead of groupsr, as the function will internally convert it
   parest <- c(alpha0=z$alpha0,nu=z$nu,balpha=z$balpha,nualpha=z$nualpha,probclus=1,probpat=z$probpat)
   gg.fit <- list(parest=parest,mcmc=as.mcmc(NA),lhood=z$lhood,equalcv=equalcv,nclust=nclust,patterns=patterns,method=method)
   class(gg.fit) <- 'gagafit'
@@ -86,12 +94,12 @@ if (method=='EM') {
   lhood <- double(B); trace <- as.integer(trace)
 
   if (method=='Gibbs') {
-    z <- .C("fit_ggC",alpha0=alpha0,nu=nu,balpha=balpha,nualpha=nualpha,probclus=probclus,prob=prob,lhood=lhood,as.integer(B),as.double(a.alpha0),as.double(b.alpha0),as.double(a.nu),as.double(b.nu),as.double(a.balpha),as.double(b.balpha),as.double(a.nualpha),as.double(b.nualpha),as.double(p.probclus),as.double(p.probpat),a0ini,nuini,balphaini,nualphaini,probclusini,probpatini,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groups),K,as.integer(equalcv),nclust,npat,as.integer(t(patterns)),ngrouppat,as.integer(gapprox),trace)
+    z <- .C("fit_ggC",alpha0=alpha0,nu=nu,balpha=balpha,nualpha=nualpha,probclus=probclus,prob=prob,lhood=lhood,as.integer(B),as.double(a.alpha0),as.double(b.alpha0),as.double(a.nu),as.double(b.nu),as.double(a.balpha),as.double(b.balpha),as.double(a.nualpha),as.double(b.nualpha),as.double(p.probclus),as.double(p.probpat),a0ini,nuini,balphaini,nualphaini,probclusini,probpatini,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groupsr),K,as.integer(equalcv),nclust,npat,as.integer(t(patterns)),ngrouppat,as.integer(gapprox),trace)
   } else if (method=='MH' | method=='SA') {
     acprop <- as.double(0)
     h.alpha0 <- h.nu <- h.balpha <- h.nualpha <- h.rho <- h.prob <- as.double(0)
     if (method=='MH') { cmethod <- as.integer(1); Bgibbs <- as.integer(50) } else { cmethod <- as.integer(0); Bgibbs <- as.integer(20) }
-    z <- .C("fitMH_ggC",acprop=acprop,alpha0=alpha0,nu=nu,balpha=balpha,nualpha=nualpha,probclus=probclus,prob=prob,lhood=lhood,as.integer(B),as.double(a.alpha0),as.double(b.alpha0),as.double(a.nu),as.double(b.nu),as.double(a.balpha),as.double(b.balpha),as.double(a.nualpha),as.double(b.nualpha),as.double(p.probclus),as.double(p.probpat),a0ini,nuini,balphaini,nualphaini,probclusini,probpatini,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groups),K,as.integer(equalcv),nclust,npat,as.integer(t(patterns)),ngrouppat,as.integer(gapprox),trace,cmethod,Bgibbs,h.alpha0,h.nu,h.balpha,h.nualpha,h.rho,h.prob)
+    z <- .C("fitMH_ggC",acprop=acprop,alpha0=alpha0,nu=nu,balpha=balpha,nualpha=nualpha,probclus=probclus,prob=prob,lhood=lhood,as.integer(B),as.double(a.alpha0),as.double(b.alpha0),as.double(a.nu),as.double(b.nu),as.double(a.balpha),as.double(b.balpha),as.double(a.nualpha),as.double(b.nualpha),as.double(p.probclus),as.double(p.probpat),a0ini,nuini,balphaini,nualphaini,probclusini,probpatini,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groupsr),K,as.integer(equalcv),nclust,npat,as.integer(t(patterns)),ngrouppat,as.integer(gapprox),trace,cmethod,Bgibbs,h.alpha0,h.nu,h.balpha,h.nualpha,h.rho,h.prob)
   }
   if (trace) cat('Done.\n')
 

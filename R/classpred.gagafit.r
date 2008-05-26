@@ -19,7 +19,7 @@ nclust <- as.integer(length(probclus))
 patterns <- gg.fit$patterns
 if (nrow(patterns)!=length(probpat)) stop('Argument patterns must be equal to the length of gg.fit@probEst')
 
-groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
+groupsr <- groups2int(groups,patterns); K <- as.integer(max(groupsr)+1)
 if (missing(prgroups)) prgroups <- rep(1/K,K)
 prgroups <- as.double(prgroups)
 if (ncol(patterns)!=K) stop('patterns must have number of columns equal to the number of distinct elements in groups')
@@ -38,7 +38,7 @@ xnew <- as.double(xnew[sel])
 sel <- sel-1  #in C vectors start at 0
 d <- integer(1); posgroups <- double(K)
 
-z <- .C("sampleclas_ggC",d=d,posgroups=posgroups,xnew,as.integer(length(sel)),as.integer(sel),as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),groups,K,prgroups,probclus,probpat,a0,nu,balpha,nualpha,equalcv,nclust,npat,as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,usesumx,gapprox)
+z <- .C("sampleclas_ggC",d=d,posgroups=posgroups,xnew,as.integer(length(sel)),as.integer(sel),as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),groupsr,K,prgroups,probclus,probpat,a0,nu,balpha,nualpha,equalcv,nclust,npat,as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,usesumx,gapprox)
 
 return(list(d=z$d+1,posgroups=z$posgroups))
 

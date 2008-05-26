@@ -1,25 +1,4 @@
 findgenes.gagafit <- function(gg.fit,x,groups,fdrmax=.05,parametric=TRUE,B=500) {
-# Computes optimal terminal decision rules and expected terminal utility for several utility functions
-# Input:
-# - x: matrix or exprSet gene expression data
-# - groups: vector indicating to which group does each column of x belong to
-# - gg.fit: GaGa or MiGaGa fit, as returned by parest.gagafit
-# - fdrmax: restriction on E(FDR). Ignored if util!='fnrstfdr'.
-# - parametric: should the FDR be controlled parametrically or non-parametrically
-# - B: number of permutations to estimate FDR non-parametrically (ignored if parametric==TRUE)
-# - centers: ignored if parametric==TRUE. Indicates the number of clusters of z-scores (passed to kmeans). Note: centers==0 indicates to use no clusters (i.e. gene-specific bootstrap), while centers==1 indicates pooling residuals from all genes as in Storey's procedure.
-
-# Output: list containing
-# - efp: expected number of true positives
-# - d: pattern to which each gene is assigned to
-# - fdr: frequentist estimated FDR that is closest to fdrmax.
-# - fdrpar: This is the target FDR used as input for Mueller's optimal Bayesian rule. If parametric==TRUE, this is equal to fdrmax. If parametric==FALSE, it's the Bayesian FDR needed to achieve frequentist estimated FDR=fdrmax.
-# - fdrest: list with estimated frequentist FDR for each target Bayesian FDR
-# - fnr: Bayesian FNR
-# - power: Bayesian power as estimated by E(TP)/E(positives)
-# - threshold: If util=='fnrstfdr', optimal threshold for posterior prob of pattern 0 (genes with prob < threshold are declared DE). Ignored otherwise.
-# Note: Bayesian estimates are computed with model-based posterior probabilities. Frequentist estimates are obtained under repeated bootstrap sampling
-
 
 centers <- 1; v <- gg.fit$pp
 if (!is.matrix(v)) stop('gg.fit$pp must be a matrix containing posterior probabilities of each expression pattern')
@@ -30,7 +9,7 @@ if (is(x, "exprSet") | is(x,"ExpressionSet")) {
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
 
-groups <- as.integer(as.integer(as.factor(groups))-1); K <- as.integer(max(groups)+1)
+groupsr <- groups2int(groups,patterns); K <- as.integer(max(groupsr)+1)
 if (length(groups) != ncol(x)) stop('groups must have length equal to the number of columns in x')
 if (K==1) stop('At least two different groups must be specified')
 patterns <- gg.fit$patterns
@@ -76,7 +55,7 @@ if (parametric==FALSE) {
   znclust <- as.integer(centers); niter <- 10
 
   cat("Done\nStarting",B,"bootstrap iterations...\n")
-  znp <- .C("expected_fp",efp=fdrest,fdrseq,as.integer(length(fdrseq)),as.integer(B),as.integer(niter),as.double(t(zscore)),as.double(m),as.double(s),index,znclust,zclustsize,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groups),as.integer(ncol(patterns)),as.double(a0),as.double(nu),as.double(balpha),as.double(nualpha),as.integer(gg.fit$equalcv),as.integer(length(probclus)),cluslist,as.double(t(probclus)),as.double(t(probpat)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,as.integer(gapprox))
+  znp <- .C("expected_fp",efp=fdrest,fdrseq,as.integer(length(fdrseq)),as.integer(B),as.integer(niter),as.double(t(zscore)),as.double(m),as.double(s),index,znclust,zclustsize,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),as.integer(groupsr),as.integer(ncol(patterns)),as.double(a0),as.double(nu),as.double(balpha),as.double(nualpha),as.integer(gg.fit$equalcv),as.integer(length(probclus)),cluslist,as.double(t(probclus)),as.double(t(probpat)),as.integer(nrow(patterns)),as.integer(t(patterns)),ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,as.integer(gapprox))
   fdrest <- znp$efp
   fdrpar <- fdrseq[abs(fdrest-fdrmax)==min(abs(fdrest-fdrmax))][1]
   fdr <- fdrest[abs(fdrest-fdrmax)==min(abs(fdrest-fdrmax))][1]

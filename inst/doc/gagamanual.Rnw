@@ -227,32 +227,37 @@ We specify the patterns with a matrix with as many rows as patterns
 and as many columns as groups.
 For each row of the matrix ({\it i.e.} each hypothesis), we indicate that
 two groups are equal by assigning the same number to their corresponding columns.
+The column names of the matrix must match the group codes indicated in \texttt{groups},
+otherwise the routine returns an error.
 For example, in our two hypothesis case we would specify:
 
 
 <<three>>=
 groups <- pData(xsim)$group[c(-6,-12)]
+groups
 patterns <- matrix(c(0,0,0,1),2,2)
+colnames(patterns) <- c('group 1','group 2')
 patterns
 @ 
 
 For illustration, suppose that instead we had 3 groups and 4 hypotheses, as follows:
 
 \begin{description}
-\item Pattern 0: GROUP 1 = GROUP 2 = GROUP 3
-\item Pattern 1: GROUP 1 $\neq$ GROUP 2 = GROUP 3
-\item Pattern 2: GROUP 1 = GROUP 2 $\neq$ GROUP 3
-\item Pattern 3: GROUP 1 $\neq$ GROUP 2 $\neq$ GROUP 3
+\item Pattern 0: CONTROL = CANCER A = CANCER B
+\item Pattern 1: CONTROL $\neq$ CANCER A = CANCER B
+\item Pattern 2: CONTROL = CANCER A $\neq$ CANCER B
+\item Pattern 3: CONTROL $\neq$ CANCER A $\neq$ CANCER B
 \end{description}
 In this case we would specify
 
 <<threebis>>=
 patterns <- matrix(c(0,0,0,0,1,1,0,0,1,0,1,2),ncol=3,byrow=TRUE)
+colnames(patterns) <- c('CONTROL','CANCER A','CANCER B')
 patterns
 @
 
-That is, the second row indicates that under the second hypothesis groups
-2 and 3 are equal, since they both have a \texttt{1} in their entries.
+That is, the second row indicates that under Pattern 1 cancers of type A and B
+are present the same expression levels, since they both have a \texttt{1} in their entries.
 The last row indicates that they are all different by
 specifying a different number in each entry.
 
@@ -284,6 +289,7 @@ with only 200 iterations.
 
 <<four>>=
 patterns <- matrix(c(0,0,0,1),2,2)
+colnames(patterns) <- c('group 1','group 2')
 gg1 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='Gibbs',B=1000,trace=FALSE)
 gg2 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='MH',B=1000,trace=FALSE)
 gg3 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='SA',B=200,trace=FALSE)
