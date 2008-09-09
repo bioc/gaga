@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.0.2
+- Added function posmeansGG to compute posterior expected expression values and fold changes.
+- fitGG method=='EM' and method=='quickEM' have been re-implemented to improve speed, and they now allow nclust>1. method=='quickEM' has been set as the default.
+- fixed bug when dcgamma, mcgamma and rcgamma check the validity of the input parameters.
+- added option in checkfit to allow expression levels to be shown in log2 scale
+
 CHANGES IN VERSION 1.0.1
 - Added function geneclus to perform supervised gene clustering.
 - Parameter B in fitGG can be used to specify maximum number of EM iterations

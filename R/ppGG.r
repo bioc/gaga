@@ -3,7 +3,7 @@ ppGG <- function(x,groups,a0,nu,balpha,nualpha,equalcv,probclus,probpat,patterns
 
 gapprox <- TRUE
 if (is(x, "exprSet") | is(x,"ExpressionSet")) {
-  if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
 

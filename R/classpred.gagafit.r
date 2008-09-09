@@ -6,7 +6,7 @@ sel <- (1:nrow(x))[order(gg.fit$pp[,1])][1:ngene]
 if (!is.vector(xnew)) stop('xnew must be a vector')
 if (!is.numeric(sel)) stop('sel must contain numerical indexes')
 if (is(x, "exprSet") | is(x,"ExpressionSet")) {
-  if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
 if (ncol(x)!=length(groups)) stop('Argument groups must have length equal to number of columns in argument x')
@@ -15,7 +15,7 @@ a0 <- as.double(par$a0); nu <- as.double(par$nu); balpha <- as.double(par$balpha
 nualpha <- as.double(par$nualpha)
 probclus <- as.double(par$probclus); probpat <- as.double(par$probpat)
 equalcv <- as.integer(gg.fit$equalcv)
-nclust <- as.integer(length(probclus))
+nclust <- as.integer(gg.fit$nclust)
 patterns <- gg.fit$patterns
 if (nrow(patterns)!=length(probpat)) stop('Argument patterns must be equal to the length of gg.fit@probEst')
 

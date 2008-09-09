@@ -8,7 +8,6 @@ findgenes.gagafit
 geneclus
 geneclus.gagafit
 fitGG
-fitfreqGG
 getpar
 getpar.gagafit
 groups2int
@@ -16,6 +15,8 @@ mcgamma
 parest
 parest.gagafit
 ppGG
+posmeansGG
+posmeansGG.gagafit
 print.gagaclus
 print.gagafit
 print.gagahyp

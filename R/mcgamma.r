@@ -6,8 +6,8 @@ if ((sum(a)+sum(s))==0) {
   if (b<=0) stop('Non-valid parameters. b must be > 0')
   if (c<=0) stop('Non-valid parameters. c must be > 0')
 } else {
-  if (sum(b+.5*a-1.5)+1<=0) stop('Non-valid parameters. sum(b+.5*a-1.5)+1 must be > 0')
-  if (sum(c+a*log(s/a))<=0) stop('Non-valid parameters. sum(c+a*log(s/a)) must be > 0')
+  if (b+sum(.5*a-1.5)+1<=0) stop('Non-valid parameters. b+sum(.5*a-1.5)+1 must be > 0')
+  if (c+sum(a*log(s/a))<=0) stop('Non-valid parameters. c+sum(a*log(s/a)) must be > 0')
 }
 if (length(a)!=length(s)) stop('Arguments a and s must be vectors of the same length')
 

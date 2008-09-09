@@ -1,15 +1,16 @@
-fitGG <- function(x,groups,patterns,equalcv=TRUE,nclust=1,method='SA',B,priorpar,parini,trace=TRUE) {
+fitGG <- function(x,groups,patterns,equalcv=TRUE,nclust=1,method='quickEM',B,priorpar,parini,trace=TRUE) {
 
 #Input processing: check errors, format and set missing parameters to default
-if (missing(B)) { if (method=='SA') { B <- 200 } else if (method=='MH' | method=='Gibbs') { B <- 1000 } else { B <- 20 } }
+if (missing(B)) { if (method=='SA') { B <- 200 } else if (method=='MH' | method=='Gibbs') { B <- 1000 } else { B <- 10 } }
 gapprox <- TRUE
 if (is(x, "exprSet") | is(x, "ExpressionSet")) {
-  if (is.character(groups)) { groups <- as.factor(pData(x)[, groups]) }
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, exprSet, data.frame or matrix") }
 if (min(x)<0) stop("x can only have positive values")
 if (sum(is.na(x))>0) stop("x cannot have any NA values")
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
+if ((method=='quickEM') && (nrow(x)>10^4)) x <- x[sample(1:nrow(x),10^4),]  #limit nb genes to 10,000 for speed
 
 K <- length(unique.default(groups))
 if (missing(patterns)) { patterns <- rbind(rep(0,K),0:(K-1)); colnames(patterns) <- unique.default(groups) }
@@ -31,11 +32,11 @@ if (nclust==1) probclusini <- 1
 if (missing(parini)) {
   if (trace) cat('Initializing parameters...')
   aest <- rowMeans(x)^2/((rowMeans(x^2)-rowMeans(x)^2)*ncol(x)/(ncol(x)-1)); lest <- 1/rowMeans(x)
-  sel <- (aest<quantile(aest,probs=.99)) & (lest<quantile(lest,probs=.99))
+  sel <- (aest<quantile(aest,probs=.99,na.rm=TRUE)) & (lest<quantile(lest,probs=.99,na.rm=TRUE))
   aest <- aest[sel]; lest <- lest[sel]
-  balphaini <- as.double(mean(aest)^2/var(aest)); nualphaini <- as.double(mean(aest))
+  balphaini <- as.double(mean(aest)^2/var(aest,na.rm=TRUE)); nualphaini <- as.double(mean(aest,na.rm=TRUE))
   if (nclust==1) {
-    a0ini <- as.double(mean(lest)^2/var(lest)); nuini <- as.double(mean(lest))
+    a0ini <- as.double(mean(lest)^2/var(lest,na.rm=TRUE)); nuini <- as.double(mean(lest,na.rm=TRUE))
     probclusini <- as.double(1)
   } else {
     clusini <- kmeans(x=lest,centers=nclust)$cluster
@@ -43,16 +44,7 @@ if (missing(parini)) {
     nuini <- as.double(tapply(lest,clusini,'mean'))
     probclusini <- as.double(table(clusini)/length(clusini))
   }
-  if (trace) cat(' Done.\n')
-  if (trace) cat('Refining initial estimates...')
   probpatini <- rep(1/nrow(patterns),nrow(patterns))
-  eps <- 1; i <- 1
-  while ((eps>.001) && (i<=B)) {
-    probnew <- colMeans(ppGG(x,groups,a0ini,nuini,balphaini,nualphaini,equalcv,probclusini,probpatini,patterns)$pp)
-    eps <- max(abs(probnew-probpatini))
-    probpatini <- probnew
-    i <- i+1
-  }
   if (trace) cat(' Done.\n')
 } else {
   if (is.null(parini$a0) | is.null(parini$nu) | is.null(parini$balpha) | is.null(parini$nualpha) | is.null(parini$probpat)) stop('some components of parini are empty')
@@ -64,15 +56,33 @@ if (missing(parini)) {
 
 if (method=='EM' | method=='quickEM') {
 
-  if (nclust>1) stop('nclust>1 is not currently implemented for empirical Bayes method')
-  if (trace) cat('Starting EM algorithm...\n')
-  z <- fitfreqGG(x,groups,patterns,method,nclust=1,a0ini,nuini,balphaini,nualphaini,probpatini,equalcv,iter.max=B,trace=trace) #pass groups instead of groupsr, as the function will internally convert it
-  parest <- c(alpha0=z$alpha0,nu=z$nu,balpha=z$balpha,nualpha=z$nualpha,probclus=1,probpat=z$probpat)
+  if (method=='quickEM') B <- 1
+  balpha <- nualpha <- double(1); alpha0 <- nu <- probclus <- double(nclust); prob <- double(npat)
+  lhood <- double(1); trace <- as.integer(trace)
+  a0ini <- as.double(a0ini); nuini <- as.double(nuini); balphaini <- as.double(balphaini); nualphaini <- as.double(nualphaini)
+  probclusini <- as.double(probclusini); probpatini <- as.double(probpatini)
+  groupsr <- as.integer(groupsr); K <- as.integer(K); equalcv <- as.integer(equalcv)
+  nclust <- as.integer(nclust); npat <- as.integer(npat); ngrouppat <- as.integer(ngrouppat)
+  gapprox <- as.integer(gapprox); trace <- as.integer(trace)
+  
+  z <- .C("fitEM_ggC",alpha0=alpha0,nu=nu,balpha=balpha,nualpha=nualpha,probclus=probclus,prob=prob,lhood=lhood,as.integer(B),a0ini,nuini,balphaini,nualphaini,probclusini,probpatini,as.integer(nrow(x)),as.integer(ncol(x)),as.double(t(x)),groupsr,K,equalcv,nclust,npat,as.integer(t(patterns)),ngrouppat,gapprox,trace)
+  
+  parest <- c(alpha0=z$alpha0,nu=z$nu,balpha=z$balpha,nualpha=z$nualpha,probclus=z$probclus,probpat=z$prob)
   gg.fit <- list(parest=parest,mcmc=as.mcmc(NA),lhood=z$lhood,equalcv=equalcv,nclust=nclust,patterns=patterns,method=method)
   class(gg.fit) <- 'gagafit'
   return(gg.fit)
 
 } else if (method=='MH' | method=='Gibbs' | method=='SA') {
+
+  if (trace) cat('Refining initial estimates...')
+  eps <- 1; i <- 1
+  while ((eps>.001) && (i<=B)) {
+    probnew <- colMeans(ppGG(x,groups,a0ini,nuini,balphaini,nualphaini,equalcv,probclusini,probpatini,patterns)$pp)
+    eps <- max(abs(probnew-probpatini))
+    probpatini <- probnew
+    i <- i+1
+  }
+  if (trace) cat(' Done.\n')
 
   if (missing(priorpar)) {
     a.alpha0 <-  .0016; b.alpha0 <-  .0001; a.nu <-  .016; b.nu <-  .0016

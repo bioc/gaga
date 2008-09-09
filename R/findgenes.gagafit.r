@@ -5,14 +5,14 @@ if (!is.matrix(v)) stop('gg.fit$pp must be a matrix containing posterior probabi
 cf <- as.double(2)
 
 if (is(x, "exprSet") | is(x,"ExpressionSet")) {
-  if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
 
+patterns <- gg.fit$patterns
 groupsr <- groups2int(groups,patterns); K <- as.integer(max(groupsr)+1)
 if (length(groups) != ncol(x)) stop('groups must have length equal to the number of columns in x')
 if (K==1) stop('At least two different groups must be specified')
-patterns <- gg.fit$patterns
 if (ncol(patterns)!=K) stop('patterns must have number of columns equal to the number of distinct elements in groups')
 for (i in 1:nrow(patterns)) { patterns[i,] <- as.integer(as.integer(as.factor(patterns[i,]))-1) }
 ngrouppat <- as.integer(apply(patterns,1,'max')+1)

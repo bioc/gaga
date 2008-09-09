@@ -7,4 +7,5 @@ if (sum(unique.default(groups)[order(unique.default(groups))]==colnames(patterns
 groupsr <- integer(length(groups))
 for (i in 1:ncol(patterns)) { groupsr[groups==colnames(patterns)[i]] <- i-1 }
 groupsr <- as.integer(groupsr)
+return(groupsr)
 }

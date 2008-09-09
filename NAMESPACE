@@ -32,6 +32,10 @@ export( checkfit,
 
         parest.gagafit,
 
+        posmeansGG,
+
+        posmeansGG.gagafit,
+
         print.gagaclus,
 
         print.gagafit,

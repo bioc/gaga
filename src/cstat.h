@@ -118,18 +118,22 @@ void err_msg(char *fct, char *txt, int n1, int n2, int n3);
 float   *vector(int,int);
 double  *dvector(int,int);
 double  **dmatrix(int,int,int,int);
-double  ***darray_3(int, int);
-double ***darray3(int n, int p, int q);
+//double  ***darray_3(int, int);
+//double ***darray3(int n, int p, int q);
+double ***darray3(int n1,int n2,int n3);   //allocate 3-way double array [0..n1-1][0..n2-1][0..n3-1]
 int     *ivector(int,int);
 int     **imatrix(int,int,int,int);
-int ***iarray_3(int lo, int hi);
-int ***iarray3(int p1, int p2, int p3);
+//int ***iarray_3(int lo, int hi);
+//int ***iarray3(int p1, int p2, int p3);
+int ***iarray3(int n1,int n2,int n3);   //allocate 3-way int array [0..n1-1][0..n2-1][0..n3-1]
 
 void free_vector(float  *,int,int);
 void free_dvector(double  *,int,int);
 void free_ivector(int  *,int,int);
 void free_dmatrix(double  **,int,int,int,int);
 void free_imatrix(int  **,int,int,int,int);
+void free_darray3(double ***a, int n1, int n2, int n3);
+void free_iarray3(int ***a, int n1, int n2, int n3);
 
 void nrerror(char *proc, char *act, char *what);
 
@@ -297,10 +301,10 @@ void mspline_vec(double *W, double *x, int *nx, int *degree, double *knots, int 
 /* Function optimization                                      */
 /**************************************************************/
 
-double brent(double ax,double bx,double cx,double (*f)(double),double tol,double *xmin,int itmax); //univariate minim
-double dbrent(double ax,double bx,double cx,double (*f)(double),double (*df)(double),double tol,double *xmin,int itmax);
-void powell(double p[],double **xi,int n,double ftol,int *iter,double *fret,double (*func)(double []),int itmax);//multivar minim
-void linmin(double p[], double xi[], int n, double *fret, double (*func)(double []), int itmax); //minim in 1 direction
+double univmin(double ax,double bx,double cx,double (*f)(double),double tol,double *xmin,int itmax); //univariate minim
+double dunivmin(double ax,double bx,double cx,double (*f)(double),double (*df)(double),double tol,double *xmin,int itmax);
+void minimize(double th[],double **dirini,int n,double ftol,int *iter,double *fret,double (*f)(double []),int itmax);//multivar minim
+void dirmin(double p[], double xi[], int n, double *fret, double (*func)(double []), int itmax, double dirminEPS); //minim in 1 direction
 void mnbrak(double *ax, double *bx, double *cx, double *fa, double *fb, double *fc,double (*func)(double)); //find bracketing triplets
 
 #endif

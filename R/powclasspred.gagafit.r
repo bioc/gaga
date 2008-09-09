@@ -4,13 +4,13 @@ powclasspred.gagafit <- function(gg.fit,x,groups,prgroups,v0thre=1,ngene=100,B=1
 gapprox <- TRUE
 patterns <- gg.fit$patterns
 if (is(x, "exprSet") | is(x,"ExpressionSet")) {
-  if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
 if (ncol(x)!=length(groups)) stop('Argument groups must have length equal to number of columns in argument x')
 par <- getpar(gg.fit)
 a0 <- as.double(par$a0); nu <- as.double(par$nu); balpha <- as.double(par$balpha)
-nualpha <- as.double(par$nualpha); probclus <- as.double(par$probclus); probpat <- as.double(par$probpat); nclust <- as.integer(length(probclus))
+nualpha <- as.double(par$nualpha); probclus <- as.double(par$probclus); probpat <- as.double(par$probpat); nclust <- as.integer(gg.fit$nclust)
 if (nrow(patterns)!=length(probpat)) stop('Argument patterns must be equal to the length of gg.fit$prob')
 if ((missing(genelimit)) & (v0thre==1)) warning("You selected to use all genes. It's recommended to narrow the selection with the arguments v0thre and genelimit")
 if (missing(genelimit)) { genelimit <- nrow(x); }

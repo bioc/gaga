@@ -9,7 +9,7 @@
   Can also compare posterior distribution of parameters with method of moments estimates.
 }
 \usage{
-checkfit(gg.fit, x, groups, type='data', xlab, ylab, main, lty, lwd, ...)
+checkfit(gg.fit, x, groups, type='data', logexpr=FALSE, xlab, ylab, main, lty, lwd, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -27,6 +27,7 @@ checkfit(gg.fit, x, groups, type='data', xlab, ylab, main, lty, lwd, ...)
     \code{shape} checks shape parameter; \code{mean} checks mean
     parameter; \code{shapemean} checks the joint of shape and mean
     parameters}
+  \item{logexpr}{If set to \code{TRUE}, the expression values are in log2 scale.}
   \item{xlab}{Passed on to \code{plot}}
   \item{ylab}{Passed on to \code{plot}}
   \item{main}{Passed on to \code{plot}}

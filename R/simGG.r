@@ -3,7 +3,9 @@ simGG <- function(n,m,p.de=.1,a0,nu,balpha,nualpha,equalcv=TRUE,probclus=1,a=NA,
 
   if (n<=0) stop("Number of genes must be positive")
   if (sum(m<0)>0) stop("Number of observations per group must be positive")
-
+  if (!missing(a)) { if (length(m)!=ncol(a)) stop("length(m) must be equal to ncol(a)") }
+  if (!missing(l)) { if (length(m)!=ncol(l)) stop("length(m) must be equal to ncol(l)") }
+  
   if (useal==FALSE) {
     if (p.de<0 & p.de>1) stop("proportion of differentially expressed genes must be between 0 and 1")
     if (balpha<=0 | nualpha<=0) stop("balpha and nualpha must be >0")
@@ -33,7 +35,8 @@ simGG <- function(n,m,p.de=.1,a0,nu,balpha,nualpha,equalcv=TRUE,probclus=1,a=NA,
   }
 
   metadata <- data.frame(labelDescription='Group that each array belongs to',row.names='group')
-  pheno <- new("AnnotatedDataFrame", data=data.frame(group=rep(c('group 1','group 2'),each=m)), dimLabels=c("rowNames", "columnNames"), varMetadata=metadata)
+  group <- paste('group',1:length(m))
+  pheno <- new("AnnotatedDataFrame", data=data.frame(group=rep(group,each=m)), dimLabels=c("rowNames", "columnNames"), varMetadata=metadata)
   sampleNames(pheno) <- paste("Array",1:nrow(pheno))
   metadata <- data.frame(labelDescription=c(paste('alpha parameter for array',1:length(m)),paste('mean parameter for array',1:length(m))),row.names=c(paste('alpha',1:length(m),sep='.'),paste('mean',1:length(m),sep='.')))
   fdata <- new("AnnotatedDataFrame", data=data.frame(a,l),varMetadata=metadata)

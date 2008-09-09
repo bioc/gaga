@@ -55,7 +55,8 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
 \author{ David Rossell }
 \seealso{ \code{\link{fitGG}} to fit a GaGa or MiGaGa model,
   \code{\link{findgenes}} to find differentially expressed genes and
-  \code{\link{classpred}} to do class prediction. }
+  \code{\link{posmeansGG}} to obtain posterior expected expression values.
+  \code{\link{classpred}} performs class prediction. }
 \examples{
 #Not run
 #library(EBarrays); data(gould)

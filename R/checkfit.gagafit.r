@@ -1,8 +1,8 @@
-checkfit.gagafit <- function(gg.fit,x,groups,type='data',xlab,ylab,main,lty,lwd,...) {
+checkfit.gagafit <- function(gg.fit,x,groups,type='data',logexpr=FALSE,xlab,ylab,main,lty,lwd,...) {
 # Plots to check fit of GaGa and MiGaGa models.
 
 if (is(x, "exprSet") | is(x, "ExpressionSet")) {
-  if (is.character(groups)) { groups <- as.factor(pData(x)[, groups]) }
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, exprSet, data.frame or matrix") }
 
@@ -11,7 +11,11 @@ if ((type!='data') && (type!='shape') && (type!='mean') && (type!='shapemean')) 
 
 xpred <- simnewsamples(gg.fit=gg.fit,groupsnew=groups,x=x,groups=groups)
 if (type=='data') {
-  xnewpdf <- density(unlist(exprs(xpred))); if (is.list(x)) xpdf <- density(unlist(x)) else xpdf <- density(x)
+  if (logexpr) {
+    xnewpdf <- density(log2(unlist(exprs(xpred)))); if (is.list(x)) xpdf <- density(log2(unlist(x))) else xpdf <- density(log2(x))
+  } else {
+    xnewpdf <- density(unlist(exprs(xpred))); if (is.list(x)) xpdf <- density(unlist(x)) else xpdf <- density(x)
+  }
   if (missing(xlab)) xlab <- 'Expression values'; if (missing(ylab)) ylab <- 'Density'; if (missing(main)) main <- ''
   plot(xpdf,type='l',xlab=xlab,ylab=ylab,main=main,...); lines(xnewpdf,lty=2,lwd=2); legend(max(xpdf$x),max(xpdf$y),c('Observed data','Posterior predictive'),lty=1:2,lwd=1:2,xjust=1,yjust=1) 
 } else if (type=='shape') {

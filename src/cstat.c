@@ -3,7 +3,7 @@
 
  Authors. Peter Mueller, Stephen Morris, David Rossell
           (some routines obtained from other sources)
- Last modified. 04 2007
+ Last modified. 06 2008
 ***********************************************************/
 
 #include <math.h>
@@ -286,7 +286,7 @@ double nn_integral(double *x, double *rx, double **Vxinv, double *detVx, double 
   // - p: dimensionality
   // - logscale: if not 0, result is returned in log scale
 
-  double ans, detx, detpr, detsum, **Vsum, **Vsuminv, **cholVsum, *m;
+  double ans, detsum, **Vsum, **Vsuminv, **cholVsum, *m;
 
   m= dvector(1,*p);
   Vsum= dmatrix(1,*p,1,*p); Vsuminv= dmatrix(1,*p,1,*p); cholVsum= dmatrix(1,*p,1,*p);
@@ -904,6 +904,7 @@ double  **dmatrix(int nrl,int nrh,int ncl,int nch)
         return m; 
 } 
 
+/*
 double ***darray_3(int lo, int hi) 
 { 
   double ***m; 
@@ -916,6 +917,7 @@ double ***darray_3(int lo, int hi)
   return m; 
 } 
 
+
 double ***darray3(int n, int p, int q) 
 { 
   double ***a; 
@@ -925,6 +927,31 @@ double ***darray3(int n, int p, int q)
     a[i] = dmatrix(0,p,0,q); 
   return(a); 
 } 
+*/
+
+double ***darray3(int n1,int n2,int n3)
+/***********************************************************************
+  allocates space for a 3 index array 0..n1-1, 0...n2-1, 0...n3-1
+***********************************************************************/
+{
+  double ***a;
+  int  i, j;
+
+  a = (double ***) malloc(n1 * sizeof(double **));
+  if(a == NULL) nrerror("darray3","allocate a 3dim double array ","");
+
+  a[0] = (double **) malloc(n1 * n2 * sizeof(double *));
+  if(a[0] == NULL) nrerror("darray3","allocate a 3dim double array ","");
+  for(i=1;i<n1;i++) a[i] = a[i-1] + n2;
+
+  a[0][0] = (double *) malloc(n1 * n2 * n3 * sizeof(double));
+  if(a[0][0] == NULL) nrerror("darray3","allocate a 3dim double array ","");
+  for(i=0;i<n1;i++) 
+    for(j=0;j<n2;j++) 
+      a[i][j] = a[0][0] + n2*n3*i + j*n3;
+    
+  return a;
+}
 
 int  *ivector(int nl,int nh) 
 { 
@@ -955,6 +982,7 @@ int  **imatrix(int nrl,int nrh,int ncl,int nch)
         return m; 
 } 
 
+/*
 int ***iarray_3(int lo, int hi) 
 { 
   int ***m; 
@@ -976,6 +1004,32 @@ int ***iarray3(int p1, int p2, int p3)
     m[i] = imatrix(0,p2,0,p3); 
   return m; 
 } 
+*/
+
+
+int ***iarray3(int n1,int n2,int n3)
+/***********************************************************************
+  allocates space for a 3 index array 0..n1-1, 0...n2-1, 0...n3-1
+***********************************************************************/
+{
+  int ***a, i, j;
+
+  a = (int ***) malloc(n1 * sizeof(int **));
+  if(a == NULL)  nrerror("iarray3","allocate a 3dim double array ","");
+
+  a[0] = (int **) malloc(n1 * n2 * sizeof(int *));
+  if(a[0] == NULL)  nrerror("iarray3","allocate a 3dim double array ","");
+  for(i=1;i<n1;i++) a[i] = a[i-1] + n2;
+
+  a[0][0] = (int *) malloc(n1 * n2 * n3 * sizeof(int));
+  if(a[0][0] == NULL)  nrerror("iarray3","allocate a 3dim double array ","");
+  for(i=0;i<n1;i++) 
+    for(j=0;j<n2;j++) 
+      a[i][j] = a[0][0] + n2*n3*i + j*n3;
+    
+  return a;
+}
+
 
 void free_vector(float  *v,int nl,int nh) 
 { 
@@ -1014,6 +1068,18 @@ void free_imatrix(int  **m,int nrl,int nrh,int ncl,int nch)
         if( (m+nrl) != NULL ) free((char  *) (m+nrl)); 
         nv -= (nch-ncl+1)*(nrh-nrl+1); 
 } 
+
+void free_darray3(double ***a, int n1, int n2, int n3) {
+  free((char*) (a[0][0]));
+  free((char*) (a[0]));
+  free((char*) (a));
+}
+
+void free_iarray3(int ***a, int n1, int n2, int n3) {
+        free((char*) (a[0][0]));
+        free((char*) (a[0]));
+        free((char*) (a));
+}
 
 
 void nrerror(char *proc, char *act, char *what) 
@@ -4579,11 +4645,11 @@ free_dmatrix(Wtemp,0,*nx,0,*nknots- *degree -1);
             FUNCTION OPTIMIZATION 
 ************************************************************************/
 
-double brent(double ax, double bx, double cx, double (*f)(double), double tol, double *xmin, int itmax) {
+double univmin(double ax, double bx, double cx, double (*f)(double), double eps, double *xmin, int itmax) {
 /* PURPOSE: UNIVARIATE OPTIMIZATION WITHOUT DERIVATIVE INFORMATION
    Given a function f and a bracketing triplet of abscissas ax, bx, cx (such that bx is between ax & cx
    and f(bx) is less than f(ax) and f(cx)), this routine isolates the minimum to a fractional precision
-   of about tol using Brent's method. The abscissa of the minimum is returned as xmin and the value
+   of about eps using Brent's method. The abscissa of the minimum is returned as xmin and the value
    of the function at the minimum is the returned value.
  */
 #define CGOLD .3819660  //golden ratio
@@ -4592,7 +4658,7 @@ double brent(double ax, double bx, double cx, double (*f)(double), double tol, d
 #define SIGN(a,b) ((b)>=0.0 ? fabs(a) : -fabs(a))
 
   int iter;
-  double a,b,d=1,etemp,fu,fv,fw,fx,p,q,r,tol1,tol2,u,v,w,x,xm;
+  double a,b,d=1,etemp,fu,fv,fw,fx,p,q,r,eps1,eps2,u,v,w,x,xm;
   double e=0.0;
 
   a=(ax < cx ? ax : cx);     //a,b must be in ascending order but input abscissas need not be
@@ -4603,12 +4669,12 @@ double brent(double ax, double bx, double cx, double (*f)(double), double tol, d
 
   for (iter=1; iter<=itmax; iter++) {      //main program loop
     xm=0.5*(a+b);
-    tol2= 2.0*(tol1=tol*fabs(x)+ZEPS);
-    if (fabs(x-xm) <= (tol2-0.5*(b-a))) {  //test for done here
+    eps2= 2.0*(eps1=eps*fabs(x)+ZEPS);
+    if (fabs(x-xm) <= (eps2-0.5*(b-a))) {  //test for done here
       *xmin= x;
       return fx;
     }
-    if (fabs(e) > tol1) {                  //construct a trial parabolic fit
+    if (fabs(e) > eps1) {                  //construct a trial parabolic fit
       r= (x-w)*(fx-fv);
       q= (x-v)*(fx-fw);
       p= (x-v)*q - (x-w)*r;
@@ -4623,12 +4689,12 @@ double brent(double ax, double bx, double cx, double (*f)(double), double tol, d
       } else {
 	d=p/q;                            //take the parabolic step
 	u= x+d;
-	if (u-a < tol2 || b-u < tol2) d=SIGN(tol1,xm-x);
+	if (u-a < eps2 || b-u < eps2) d=SIGN(eps1,xm-x);
       }
     } else {
       d= CGOLD*(e=(x >= xm ? a-x : b-x));
     }
-    u= (fabs(d) >= tol1 ? x+d : x+SIGN(tol1,d));
+    u= (fabs(d) >= eps1 ? x+d : x+SIGN(eps1,d));
     fu= (*f)(u);                         //this is the one function evaluation per iteration
     if (fu <= fx) {                      //now decide what to do with our function evaluation
       if (u >= x) a=x; else b=x;
@@ -4654,18 +4720,18 @@ double brent(double ax, double bx, double cx, double (*f)(double), double tol, d
 }
 
 #define MOV3(a,b,c,d,e,f) (a)=(d);(b)=(e);(c)=(f);
-double dbrent(double ax,double bx,double cx,double (*f)(double),double (*df)(double),double tol,double *xmin,int itmax) {
+double dunivmin(double ax,double bx,double cx,double (*f)(double),double (*df)(double),double eps,double *xmin,int itmax) {
 /* Given a function f and its derivative function df, and given a bracketing triplet of abscissas ax,
    bx, cx [such that bx is between ax and cx, and f(bx) is less than both f(ax) and f(cx)],
-   this routine isolates the minimum to a fractional precision of about tol using a modification of
+   this routine isolates the minimum to a fractional precision of about eps using a modification of
    Brent's method that uses derivatives. The abscissa of the minimum is returned as xmin, and
-the minimum function value is returned as dbrent, the returned function value.
+the minimum function value is returned as dunivmin, the returned function value.
 */
 
   #define ZEPS 1.0e-10   //protects against trying to achieve fractional accuracy when min is exactly zero
   int iter,ok1,ok2; //Will be used as flags for whether proposed steps are acceptable or not.
   double a,b,d=1,d1,d2,du,dv,dw,dx,e=0.0; 
-  double fu,fv,fw,fx,olde,tol1,tol2,u,u1,u2,v,w,x,xm;
+  double fu,fv,fw,fx,olde,eps1,eps2,u,u1,u2,v,w,x,xm;
 
   a=(ax < cx ? ax : cx);
   b=(ax > cx ? ax : cx);
@@ -4674,13 +4740,13 @@ the minimum function value is returned as dbrent, the returned function value.
   dw=dv=dx=(*df)(x); 
   for (iter=1;iter<=itmax;iter++) {
     xm=0.5*(a+b);
-    tol1=tol*fabs(x)+ZEPS;
-    tol2=2.0*tol1;
-    if (fabs(x-xm) <= (tol2-0.5*(b-a))) {
+    eps1=eps*fabs(x)+ZEPS;
+    eps2=2.0*eps1;
+    if (fabs(x-xm) <= (eps2-0.5*(b-a))) {
       *xmin=x;
       return fx;
     }
-    if (fabs(e) > tol1) {
+    if (fabs(e) > eps1) {
       d1=2.0*(b-a); //Initialize these d's to an out-of-bracket value
       d2=d1;
       if (dw != dx) d1=(w-x)*dx/(dx-dw); //Secant method with one point.
@@ -4702,8 +4768,8 @@ the minimum function value is returned as dbrent, the returned function value.
 	  d=d2;
 	if (fabs(d) <= fabs(0.5*olde)) {
 	  u=x+d;
-	  if (u-a < tol2 || b-u < tol2)
-	    d=SIGN(tol1,xm-x);
+	  if (u-a < eps2 || b-u < eps2)
+	    d=SIGN(eps1,xm-x);
 	} else { //Bisect, not golden section.
 	  d=0.5*(e=(dx >= 0.0 ? a-x : b-x));
 	  //Decide which segment by the sign of the derivative.
@@ -4714,11 +4780,11 @@ the minimum function value is returned as dbrent, the returned function value.
     } else {
       d=0.5*(e=(dx >= 0.0 ? a-x : b-x));
     }
-    if (fabs(d) >= tol1) {
+    if (fabs(d) >= eps1) {
       u=x+d;
       fu=(*f)(u);
     } else {
-      u=x+SIGN(tol1,d);
+      u=x+SIGN(eps1,d);
       fu=(*f)(u);
       if (fu > fx) { //If the minimum step in the downhill direction takes us uphill, then we are done.
 	*xmin=x;
@@ -4747,20 +4813,83 @@ the minimum function value is returned as dbrent, the returned function value.
 
 }
 
+
+
+void minimize(double th[],double **dirini,int n,double eps,int *iter,double *fret,double (*f)(double []),int itmax) {
+/* Multivariate function minimization. */
+/* Input/Output
+   - th[1..n]: initial parameter values.
+   - dirini[1..n][1..n]: matrix with initial directions, typically the n unit vectors
+   - n: length of th
+   - eps: tolerance to achieve convergence
+   - f: function to minimize (must take a vector of doubles as input)
+   Output
+   - th[1..n]: optimal parameter values
+   - dirini[1..n][1..n]: directions used in the last iteration
+   - iter: number of iterations used
+   - fret: value of the function at the optimum
+*/
+
+  int i,ibig,j,converged=0;
+  double del,fth,fthtt,t,*tht,*thtt,*dirinit;
+
+  tht=dvector(1,n);
+  thtt=dvector(1,n);
+  dirinit=dvector(1,n);
+  //initial parameter and function values
+  *fret=(*f)(th);
+  for (j=1;j<=n;j++) tht[j]=th[j];
+  for (*iter=1;(*iter <itmax) && (converged==0);++(*iter)) {
+    fth=(*fret);
+    ibig=0;
+    del=0.0;
+    for (i=1;i<=n;i++) {  //minimize along all directions
+      for (j=1;j<=n;j++) dirinit[j]=dirini[j][i];
+      fthtt=(*fret);
+      dirmin(th,dirinit,n,fret,f,itmax,eps);
+      if (fabs(fthtt-(*fret)) > del) {  //
+	del=fabs(fthtt-(*fret));
+	ibig=i;
+      }
+    }
+    for (j=1;j<=n;j++) { //extrapolated point, average direction and function value at extrapolated point
+      thtt[j]=2.0*th[j]-tht[j];
+      dirinit[j]=th[j]-tht[j];
+      tht[j]=th[j];
+    }
+    fthtt=(*f)(thtt);
+    if (fthtt < fth) {
+      t=2.0*(fth-2.0*(*fret)+fthtt)*sqrt(fth-(*fret)-del)-del*sqrt(fth-fthtt);
+      if (t < 0.0) {
+	dirmin(th,dirinit,n,fret,f,itmax,eps);
+	for (j=1;j<=n;j++) {
+	  dirini[j][ibig]=dirini[j][n];
+	  dirini[j][n]=dirinit[j];
+	}
+      }
+    }
+    if (2.0*fabs(fth-(*fret)) <= eps*(fabs(fth)+fabs(*fret))) converged=1;
+  }
+
+  free_dvector(dirinit,1,n);
+  free_dvector(thtt,1,n);
+  free_dvector(tht,1,n);
+}
+
+
 #define TINY 1.0e-25
 int ncom; //Global variables communicate with f1dim.
 double *pcom,*xicom,(*nrfunc)(double []);
 
-void linmin(double p[], double xi[], int n, double *fret, double (*func)(double []), int itmax) {
+void dirmin(double p[], double xi[], int n, double *fret, double (*func)(double []), int itmax, double dirminEPS) {
 /* Given an n-dimensional point p[1..n] and an n-dimensional direction xi[1..n], moves and
    resets p to where the function func(p) takes on a minimum along the direction xi from p,
    and replaces xi by the actual vector displacement that p was moved. Also returns as fret
    the value of func at the returned location p. This is actually all accomplished by calling the
-   routines mnbrak and brent.
+   routines mnbrak and univmin.
 */
-#define TOL 2.0e-4
 
-double brent(double ax, double bx, double cx,double (*f)(double), double tol, double *xmin, int itmax);
+double univmin(double ax, double bx, double cx,double (*f)(double), double eps, double *xmin, int itmax);
 double f1dim(double x);
 void mnbrak(double *ax, double *bx, double *cx, double *fa, double *fb,
 double *fc, double (*func)(double));
@@ -4778,7 +4907,7 @@ double xx,xmin,fx,fb,fa,bx,ax;
  ax=0.0; //Initial guess for brackets.
  xx=1.0;
  mnbrak(&ax,&xx,&bx,&fa,&fx,&fb,f1dim);
- *fret=brent(ax,xx,bx,f1dim,TOL,&xmin,itmax);
+ *fret=univmin(ax,xx,bx,f1dim,dirminEPS,&xmin,itmax);
  for (j=1;j<=n;j++) { //Construct the vector results to return.
    xi[j] *= xmin;
    p[j] += xi[j];
@@ -4787,10 +4916,8 @@ double xx,xmin,fx,fb,fa,bx,ax;
  free_dvector(pcom,1,n);
 }
 
-//extern int ncom; //Defined in linmin.
-//extern double *pcom,*xicom,(*nrfunc)(double []);
 double f1dim(double x) {
-//Must accompany linmin.
+//Must accompany dirmin.
   int j;
   double f,*xt;
   xt=dvector(1,ncom);

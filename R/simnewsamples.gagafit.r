@@ -3,7 +3,7 @@ simnewsamples.gagafit <- function(gg.fit,groupsnew,sel,x,groups) {
 
 gapprox <- TRUE
 if (is(x, "exprSet") | is(x,"ExpressionSet")) {
-  if (is.character(groups)) { groups <- as.factor(pData(data)[, groups]) }
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") } 
 
@@ -11,9 +11,10 @@ patterns <- gg.fit$patterns
 v <- gg.fit$pp
 
 groupsr <- groups2int(groups,patterns); K <- as.integer(max(groupsr)+1)
-groupsnewr <- integer(length(groups))
-for (i in 1:ncol(patterns)) { groupsnewr[groupsnew == colnames(patterns)[i]] <- i - 1 }
-groupsnewr <- as.integer(groupsnewr)
+groupsnewr <- groups2int(groupsnew,patterns)
+#groupsnewr <- integer(length(groupsnew))
+#for (i in 1:ncol(patterns)) { groupsnewr[groupsnew == colnames(patterns)[i]] <- i - 1 }
+#groupsnewr <- as.integer(groupsnewr)
 
 if ((max(groupsnewr)>max(groupsr)) | (min(groupsnewr)<min(groupsr))) stop('Groups indicated in groupsnew do not match with those indicated in groups')
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
@@ -27,7 +28,7 @@ ngrouppat <- as.integer(apply(patterns,1,'max')+1)
 par <- getpar(gg.fit)
 alpha0 <- as.double(par$a0); nu <- as.double(par$nu); balpha <- as.double(par$balpha)
 nualpha <- as.double(par$nualpha)
-nclust <- as.integer(length(gg.fit$a0)); rho <- as.double(par$probclus)
+nclust <- as.integer(gg.fit$nclust); rho <- as.double(par$probclus)
 sumx <- double(nrow(x)*sum(ngrouppat)); nobsx <- double(sum(ngrouppat))
 if (gg.fit$equalcv) {
   prodx <- double(nrow(x))

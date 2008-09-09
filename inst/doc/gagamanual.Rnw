@@ -38,9 +38,9 @@
 
 \title{Manual for the R \texttt{gaga} package}
 \author{David Rossell \\
-\small{Department of Biostatistics} \\
-\small{The University of Texas M. D. Anderson Cancer Center} \\
-\small{Houston, TX.} \\
+\small{Department of Bioinformatics \& Biostatistics} \\
+\small{IRB Barcelona} \\
+\small{Barcelona, Spain.} \\
 \texttt{rosselldavid@gmail.com}}
 
 \date{}  %comment to include current date
@@ -270,22 +270,26 @@ of the classifier built in Section \ref{sec:classpredict}.
 Here we use the option \texttt{trace=FALSE} to prevent iteration information
 from being printed. 
 There are several available methods to fit the model.
-Specifying \texttt{method=='Gibbs'} or \texttt{method=='MH'} fits a fully
-Bayesian model via Gibbs or Metropolis-Hastings MCMC posterior sampling, respectively.
-\texttt{method=='SA'} implements a Simulated Annealing scheme which
-searches for a hyper-parameter value with high posterior density.
 \texttt{method=='EM'} implements an Expectation-Maximization algorithm which seeks
 to maximize the expected likelihood.
-\texttt{'EM'} and \texttt{'SA'} are computationally quicker than
-\texttt{'Gibbs'} and \texttt{'MH'}, but the latter provide credibility intervals
-as well as point estimates.
-In our experience the four methods usually deliver similar results.
+\texttt{method=='quickEM'} (the default) is a quicker version that uses only 1 maximization step.
+\texttt{quickEM} usually provides reasonably good hyper-parameter estimates at a low
+computational cost.
+In practice we have observed that the inference derived from the GaGa and MiGaGa models 
+({\it e.g.} lists of differentially expressed genes) is robust
+to slight hyper-parameter miss-specifications, so we believe \texttt{quickEM} to be a good
+default option for large datasets.
+\texttt{method=='SA'} implements a Simulated Annealing scheme which
+searches for a hyper-parameter value with high posterior density.
 
-By default the routine uses a Simulated Annealing scheme with 200 iterations
-to find hyper-parameter values with high posterior density.
-Of course, a larger number of iterations may be specified, but in practice
-we have found that good hyper-parameter values can be found for the GaGa model
-with only 200 iterations.
+The three above-mentioned methods (\texttt{EM}, \texttt{quickEM}, \texttt{SA}) only provide
+point estimates.
+We can obtain credibility intervals with
+\texttt{method=='Gibbs'} or \texttt{method=='MH'}, which fit a fully
+Bayesian model via Gibbs or Metropolis-Hastings MCMC posterior sampling, respectively.
+Of course, obtaining credibility intervals comes at a higher computational cost.
+In our experience the five methods typically deliver similar results.
+
 
 <<four>>=
 patterns <- matrix(c(0,0,0,1),2,2)
@@ -294,6 +298,7 @@ gg1 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='Gibbs',B=10
 gg2 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='MH',B=1000,trace=FALSE)
 gg3 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='SA',B=200,trace=FALSE)
 gg4 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='EM',trace=FALSE)  
+gg5 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='quickEM',trace=FALSE)  
 @ 
 
 We can obtain iteration plots to visually assess the convergence of the chain.
@@ -326,19 +331,21 @@ We discard the first 100 MCMC iterations with \texttt{burnin=100},
 and we ask for 95\% posterior credibility intervals with \texttt{alpha=.05}.
 The slot \texttt{ci} of the returned object contains the credibility intervals
 (this option is only available for \texttt{method=='Gibbs'}
-and \texttt{method=='MH'}.
+and \texttt{method=='MH'}).
 
 <<five>>=
 gg1 <- parest(gg1,x=x[,c(-6,-12)],groups,burnin=100,alpha=.05)
 gg2 <- parest(gg2,x=x[,c(-6,-12)],groups,burnin=100,alpha=.05)
 gg3 <- parest(gg3,x=x[,c(-6,-12)],groups,alpha=.05)
 gg4 <- parest(gg4,x=x[,c(-6,-12)],groups,alpha=.05)
+gg5 <- parest(gg5,x=x[,c(-6,-12)],groups,alpha=.05)
 gg1
 gg1$ci
 gg2
 gg2$ci
 gg3
 gg4
+gg5
 @
 
 Although the parameter estimates obtained from the four methods are similar to each
@@ -351,11 +358,11 @@ expressed genes obtained with each method are actually the same.
 The slot \texttt{pp} in \texttt{gg1} and \texttt{gg4}
 contains a matrix with the posterior probability
 of each expression pattern for each gene.
-For example, the first gene has a posterior probability of 0.993
+For example, the first gene has a posterior probability of 0.994768
 of following pattern 0 ({\it i.e.} being equally expressed)
-and a probability of 0.033 of following pattern 1 
+and a probability of 0.0052 of following pattern 1 
 ({\it i.e.} being differentially expressed) under the fully
-Bayesian fit, and 0.034 under the maximum likelihood fit.
+Bayesian fit, and 0.0051 under the maximum likelihood fit.
 
 <<seven>>=
 dim(gg1$pp)
@@ -498,9 +505,11 @@ when using the other fitting criteria explained in  Section \ref{sec:modelfit}.
 d2 <- findgenes(gg2,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
 d3 <- findgenes(gg3,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
 d4 <- findgenes(gg4,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
+d5 <- findgenes(gg5,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
 table(d1$d,d2$d)
 table(d1$d,d3$d)
 table(d1$d,d4$d)
+table(d1$d,d5$d)
 @
 
 Despite the existence of small differences in the hyper-parameter estimates
@@ -508,6 +517,38 @@ between methods, the final list of
 differentially expressed genes is the same for all of them.
 This suggests that the GaGa model is somewhat robust to the hyper-parameter
 specification.
+
+\section{Obtaining fold change estimates}
+\label{sec:fc}
+
+The GaGa and MiGaGa models can be used to obtain fold change estimates,
+by computing the posterior expected expression values for each group.
+As these posterior expectations are derived from a hierarchical model,
+they are obtained by borrowing information across genes.
+Therefore, in small sample situations they are preferrable to simply
+using the group sample means.
+
+The function \texttt{posmeansGG} computes posterior expected values
+under any expression pattern.
+The expression pattern is indicated with the argument \texttt{underpattern}.
+In our example (as in most microarray experiments) pattern 0 corresponds
+to the null hypothesis that no genes are differentially expressed.
+Therefore, specifying \texttt{underpattern=0} would result in obtaining
+identical expression estimates for both groups.
+Instead, one is commonly interested in computing a different mean for each
+group, which in our case corresponds to pattern 1.
+As the expression measurements were simulated to be in log2 scale, the log-fold change
+can be computed by taking the difference between the two group means
+(if the data were in the original scale, we would divide instead).
+The code below computed posterior means and log-fold changes, and prints out
+the fold change for the first five genes.
+
+<<fc1>>=
+mpos <- posmeansGG(gg1,x=x[,c(-6,-12)],groups=groups,underpattern=1)
+fc <- mpos[,1]-mpos[,2]
+fc[1:5]
+@
+
 
 \section{Class prediction}
 \label{sec:classpredict}

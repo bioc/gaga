@@ -7,7 +7,7 @@
  approach or via maximum likelihood.
 }
 \usage{
-fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "SA", B, priorpar, parini, trace = TRUE)
+fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "quickEM", B, priorpar, parini, trace = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -97,11 +97,6 @@ gg1 <- fitGG(x,groups,patterns,method='EM')
 gg1 <- parest(gg1,x,groups)
 gg1
 
-#Bayesian fit: Metropolis-Hastings
-gg.bay <- fitGG(x,groups,patterns,method='Gibbs',B=1000)
-plot(gg.bay$mcmc)
-gg.bay <- parest(gg.bay,x,groups,burnin=100)
-gg.bay
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

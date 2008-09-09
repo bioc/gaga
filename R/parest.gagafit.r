@@ -2,14 +2,19 @@ parest.gagafit <- function(gg.fit,x,groups,burnin,alpha=.05) {
 
 if (missing(x)) stop('argument x must be specified')
 if (missing(groups)) stop('argument groups must be specified')
+if (is(x, "exprSet") | is(x, "ExpressionSet")) {
+  if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
+  x <- exprs(x)
+} else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an ExpressionSet, exprSet, data.frame or matrix") }
+
 if (ncol(x)!=length(groups)) stop('length(groups) must be equal to the number of columns in x')
 groupsr <- groups2int(groups,gg.fit$patterns)
 
 nclust <- gg.fit$nclust
 if (gg.fit$method=='EM' | gg.fit$method=='quickEM') {
-  a0 <- gg.fit$parest[1]; nu <- gg.fit$parest[2]
-  balpha <- gg.fit$parest[3]; nualpha <- gg.fit$parest[4]
-  probclus <- 1; probpat <- gg.fit$parest[-1:-5]
+  a0 <- getpar(gg.fit)$a0; nu <- getpar(gg.fit)$nu
+  balpha <- getpar(gg.fit)$balpha; nualpha <- getpar(gg.fit)$nualpha
+  probclus <- getpar(gg.fit)$probclus; probpat <- getpar(gg.fit)$probpat
   ci<-list(a0=NA,nu=NA,balpha=NA,nualpha=NA,probclus=NA,probpat=NA)
   pp <- ppGG(x,groups,a0=a0,nu=nu,balpha=balpha,nualpha=nualpha,equalcv=gg.fit$equalcv,probclus=probclus,probpat=probpat,patterns=gg.fit$patterns)
   dic <- NA
