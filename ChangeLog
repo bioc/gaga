@@ -1,3 +1,12 @@
+CHANGES IN VERSION 1.0.5
+- Fixed some errors in vignette
+
+CHANGES IN VERSION 1.0.4
+- Removed INDEX file so that it can be automatically generated with R CMD BUILD
+
+CHANGES IN VERSION 1.0.3
+- Fixed some compiler warnings
+
 CHANGES IN VERSION 1.0.2
 - Added function posmeansGG to compute posterior expected expression values and fold changes.
 - fitGG method=='EM' and method=='quickEM' have been re-implemented to improve speed, and they now allow nclust>1. method=='quickEM' has been set as the default.

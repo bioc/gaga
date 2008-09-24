@@ -304,26 +304,8 @@ gg5 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='quickEM',trace=FALSE
 We can obtain iteration plots to visually assess the convergence of the chain.
 The component \texttt{mcmc} of \texttt{gg1} contains an object of
 type \texttt{mcmc}, as defined in the library \texttt{coda}.
-Therefore, simply typing \texttt{plot(gg1\$mcmc)} produces the
-plots in Figure \ref{fig:fig3} (only first plot shown).
-For more formal convergence diagnostics, see the documentation of the library \texttt{coda}.
-We see that convergence was reached very quickly.
 
 
-\setkeys{Gin}{width=0.8\textwidth} 
-<<label=fig3plot,include=FALSE>>=
-plot(gg1$mcmc)
-@ 
-
-\begin{figure}
-\begin{center}
-<<label=fig3,fig=TRUE,echo=FALSE>>=
-<<fig3plot>>
-@
-\end{center}
-\caption{Plotting MCMC output}
-\label{fig:fig3}
-\end{figure}
 
 To obtain parameter estimates and the posterior probability that each gene
 is differentially expressed we use the function \texttt{parest}.
@@ -380,8 +362,8 @@ are based on drawing parameter values from the posterior
 distribution for each gene, and possibly using then to generate data
 values, and then compare the simulated values to the observed data.
 The data generated from the posterior predictive is compared to the 
-observed data in Figure \ref{fig:fig3}(a).
-Figure \ref{fig:fig3}(b)-(d) compares draws from the posterior 
+observed data in Figure \ref{fig:fig4}(a).
+Figure \ref{fig:fig4}(b)-(d) compares draws from the posterior 
 of $\alpha$ and $\lambda$ with their method of moments estimate,
 which is model-free.
 All plots indicate that the model has a reasonably good fit.
