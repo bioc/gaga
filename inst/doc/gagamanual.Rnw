@@ -10,9 +10,9 @@
 %\usepackage{color}      % use if color is used in text
 \usepackage{hyperref}   % use for hypertext links, including those to external documents and URLs
 \usepackage{natbib}    %number and author-year style referencing
-\usepackage{epsf} 
-\usepackage{lscape} 
-\bibpunct{(}{)}{;}{a}{,}{,}
+%\usepackage{epsf} 
+%\usepackage{lscape} 
+%\bibpunct{(}{)}{;}{a}{,}{,}
 
 %Theorem environments
 \newtheorem{theorem}{Theorem}[section]
@@ -49,10 +49,11 @@
 \section{Introduction}
 \label{sec:intro}
 
-\cite{newton:2001} and \cite{kendziorski:2003} introduced the Gamma-Gamma model to
+%\cite{newton:2001} and \cite{kendziorski:2003} introduced the Gamma-Gamma model to
+Newton (2001) and Kendziorski (2003) introduced the Gamma-Gamma model to
 analyze microarray data, an elegant and parsimonious hierachical model that allows for
 the borrowing of information between genes.
-\cite{rossell:2007} showed that the assumptions of this model are
+Rossell (2007) showed that the assumptions of this model are
 too simplistic, which resulted in a rather poor fit to several real datasets,
 and developed two extensions of the model: GaGa and MiGaGa.
 The \texttt{gaga} library implements the GaGa and MiGaGa generalizations,
@@ -110,7 +111,7 @@ that govern the hierarchy:
 The \texttt{gaga} library provides some default values for the prior parameters
 that are a reasonable choice when the data has been normalized
 via the function \texttt{just.rma} 
-from the R library \texttt{affy} \cite{rpkg:affy} 
+from the R library \texttt{affy} 
 or \texttt{just.gcrma} from the R library \texttt{just.gcrma}.
 The MiGaGa model extends GaGa by specifying a mixture of inverse gammas
 for $\nu$.
@@ -121,8 +122,8 @@ Both models are fit using the routine \texttt{fitGG}: the argument
 In the remainder of this document we generate a simulated dataset and
 we show how to analyze it with the routines provided with the \texttt{gaga} library.
 In Section \ref{sec:simulate} we simulate a dataset based on the parameter
-estimates obtained from the Armstrong dataset \cite{armstrong:2002},
-as described in \cite{rossell:2007}.
+estimates obtained from the Armstrong dataset (Armstrong, 2002) %\cite{armstrong:2002},
+as described in (Rossell, 2007) %\cite{rossell:2007}.
 Section \ref{sec:modelfit} shows how to fit the model via MCMC sampling and
 in Section \ref{sec:gof} we assess its goodness-of-fit.
 Finally, in Sections \ref{sec:degenes} and \ref{sec:classpredict} we
@@ -435,10 +436,10 @@ rate, subject to an upper bound on the false discovery rate,
 say \texttt{fdrmax=0.05}.
 In a Bayesian sense, this is achieved by assigning to pattern 0 (null hypothesis)
 all genes for which the posterior probability of following pattern 0 is above a certain
-threshold \cite{mueller:2004}.
+threshold (Mueller, 2004). %\cite{mueller:2004}.
 The problem is then to find the optimal threshold, which can be done
 parametrically or non-parametrically through the use of permutations
-(for details see \cite{rossell:2007}).
+(for details see Rossell, 2007).%\cite{rossell:2007}
 Here we explore both options, specifying \texttt{B=1000} permutations
 for the non-parametric option.
 

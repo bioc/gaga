@@ -86,15 +86,20 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
   belongs to. }
 \examples{
 library(gaga)
-library(EBarrays); data(gould)
-x <- log(gould[1:100,-1])  #select 100 genes so that it runs very fast. Exclude 1st array
-groups <- c('group1','group1','group2','group2','group2','group2','group2','group3','group3') #group each array corresponds to
-patterns <- rbind(rep(0,3),c(0,0,1),c(0,1,1),0:2) #4 hypothesis
-colnames(patterns) <- c('group1','group2','group3') #colnames(patterns) must match codes in groups
+set.seed(10)
+n <- 100; m <- c(6,6)
+a0 <- 25.5; nu <- 0.109
+balpha <- 1.183; nualpha <- 1683
+probpat <- c(.95,.05)
+xsim <- simGG(n,m,p.de=probpat[2],a0,nu,balpha,nualpha,equalcv=TRUE)
+x <- exprs(xsim)
 
 #Frequentist fit: EM algorithm to obtain MLE
-gg1 <- fitGG(x,groups,patterns,method='EM')
-gg1 <- parest(gg1,x,groups)
+groups <- pData(xsim)$group[c(-6,-12)]
+patterns <- matrix(c(0,0,0,1),2,2)
+colnames(patterns) <- c('group 1','group 2')
+gg1 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='EM',trace=FALSE)  
+gg1 <- parest(gg1,x=x[,c(-6,-12)],groups)
 gg1
 
 }
