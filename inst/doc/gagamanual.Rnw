@@ -49,8 +49,8 @@
 \section{Introduction}
 \label{sec:intro}
 
-%\cite{newton:2001} and \cite{kendziorski:2003} introduced the Gamma-Gamma model to
-Newton (2001) and Kendziorski (2003) introduced the Gamma-Gamma model to
+\cite{newton:2001} and \cite{kendziorski:2003} introduced the Gamma-Gamma model to
+%Newton (2001) and Kendziorski (2003) introduced the Gamma-Gamma model to
 analyze microarray data, an elegant and parsimonious hierachical model that allows for
 the borrowing of information between genes.
 Rossell (2007) showed that the assumptions of this model are
@@ -296,10 +296,8 @@ In our experience the five methods typically deliver similar results.
 patterns <- matrix(c(0,0,0,1),2,2)
 colnames(patterns) <- c('group 1','group 2')
 gg1 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='Gibbs',B=1000,trace=FALSE)
-gg2 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='MH',B=1000,trace=FALSE)
-gg3 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,nclust=1,method='SA',B=200,trace=FALSE)
-gg4 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='EM',trace=FALSE)  
-gg5 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='quickEM',trace=FALSE)  
+gg2 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='EM',trace=FALSE)  
+gg3 <- fitGG(x[,c(-6,-12)],groups,patterns=patterns,method='quickEM',trace=FALSE)  
 @ 
 
 We can obtain iteration plots to visually assess the convergence of the chain.
@@ -318,17 +316,12 @@ and \texttt{method=='MH'}).
 
 <<five>>=
 gg1 <- parest(gg1,x=x[,c(-6,-12)],groups,burnin=100,alpha=.05)
-gg2 <- parest(gg2,x=x[,c(-6,-12)],groups,burnin=100,alpha=.05)
+gg2 <- parest(gg2,x=x[,c(-6,-12)],groups,alpha=.05)
 gg3 <- parest(gg3,x=x[,c(-6,-12)],groups,alpha=.05)
-gg4 <- parest(gg4,x=x[,c(-6,-12)],groups,alpha=.05)
-gg5 <- parest(gg5,x=x[,c(-6,-12)],groups,alpha=.05)
 gg1
 gg1$ci
 gg2
-gg2$ci
 gg3
-gg4
-gg5
 @
 
 Although the parameter estimates obtained from the four methods are similar to each
@@ -338,19 +331,18 @@ For the larger datasets encountered in practice the four methods typically
 deliver very similar results.
 In Section \ref{sec:degenes} we assess whether the lists of differentially
 expressed genes obtained with each method are actually the same.
-The slot \texttt{pp} in \texttt{gg1} and \texttt{gg4}
+The slot \texttt{pp} in \texttt{gg1} and \texttt{gg2}
 contains a matrix with the posterior probability
 of each expression pattern for each gene.
-For example, the first gene has a posterior probability of 0.994768
-of following pattern 0 ({\it i.e.} being equally expressed)
-and a probability of 0.0052 of following pattern 1 
-({\it i.e.} being differentially expressed) under the fully
-Bayesian fit, and 0.0051 under the maximum likelihood fit.
+For example, to find probability that the first gene follows
+pattern 0 ({\it i.e.} is equally expressed)
+and pattern 1 ({\it i.e.} is differentially expressed)
+we do as follows.
 
 <<seven>>=
 dim(gg1$pp)
 gg1$pp[1,]
-gg4$pp[1,]
+gg2$pp[1,]
 @
 
 \section{Checking the goodness of fit}
@@ -487,12 +479,8 @@ when using the other fitting criteria explained in  Section \ref{sec:modelfit}.
 <<eightbis>>=
 d2 <- findgenes(gg2,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
 d3 <- findgenes(gg3,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
-d4 <- findgenes(gg4,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
-d5 <- findgenes(gg5,x[,c(-6,-12)],groups,fdrmax=.05,parametric=TRUE)
 table(d1$d,d2$d)
 table(d1$d,d3$d)
-table(d1$d,d4$d)
-table(d1$d,d5$d)
 @
 
 Despite the existence of small differences in the hyper-parameter estimates
