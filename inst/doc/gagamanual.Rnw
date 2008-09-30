@@ -2,6 +2,8 @@
 %\VignetteIndexEntry{Manual for the gaga library}
 %\VignettePackage{gaga}
 
+
+
 \usepackage{amsmath}    % need for subequations
 \usepackage{amssymb}    %useful mathematical symbols
 \usepackage{bm}         %needed for bold greek letters and math symbols
@@ -14,23 +16,7 @@
 %\usepackage{lscape} 
 %\bibpunct{(}{)}{;}{a}{,}{,}
 
-%Theorem environments
-\newtheorem{theorem}{Theorem}[section]
-\newtheorem{lemma}[theorem]{Lemma}
-\newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{corollary}[theorem]{Corollary}
-\newenvironment{proof}[1][Proof]{\begin{trivlist}
-\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
-\newenvironment{definition}[1][Definition]{\begin{trivlist}
-\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
-\newenvironment{example}[1][Example]{\begin{trivlist}
-\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
-\newenvironment{remark}[1][Remark]{\begin{trivlist}
-\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
-\newcommand{\qed}{\nobreak \ifvmode \relax \else
-      \ifdim\lastskip<1.5em \hskip-\lastskip
-      \hskip1.5em plus0em minus0.5em \fi \nobreak
-      \vrule height0.75em width0.5em depth0.25em\fi}
+
 
 \pagestyle{empty} % use if page numbers not wanted
 
@@ -42,24 +28,28 @@
 \small{IRB Barcelona} \\
 \small{Barcelona, Spain.} \\
 \texttt{rosselldavid@gmail.com}}
-
 \date{}  %comment to include current date
+
 \maketitle
+
 
 \section{Introduction}
 \label{sec:intro}
+
 
 \cite{newton:2001} and \cite{kendziorski:2003} introduced the Gamma-Gamma model to
 %Newton (2001) and Kendziorski (2003) introduced the Gamma-Gamma model to
 analyze microarray data, an elegant and parsimonious hierachical model that allows for
 the borrowing of information between genes.
-Rossell (2007) showed that the assumptions of this model are
+\cite{rossell:2007} showed that the assumptions of this model are
 too simplistic, which resulted in a rather poor fit to several real datasets,
 and developed two extensions of the model: GaGa and MiGaGa.
 The \texttt{gaga} library implements the GaGa and MiGaGa generalizations,
 which can be used both to find differentially expressed genes and to predict
 the class of a future sample ({\it e.g.} given the mRNA measurements for a new
 patient, predict whether the patient has cancer or is healthy). 
+
+
 
 We now briefly outline the \texttt{GaGa} and \texttt{MiGaGa} models.
 Let $x_{ij}$ be the expression measurement for gene $i$ in array $j$,
@@ -72,16 +62,19 @@ $x_{ij} \sim \mbox{Ga}(\alpha_{i,z_j},\alpha_{i,z_j}/\lambda_{i,z_j})$
 where $\alpha_{i,z_j}$ and $\lambda_{i,z_j}$
 arise from a gamma and an inverse gamma distribution, respectively:
 
+
 \begin{align}
   \lambda_{i,k} | \delta_i,\alpha_0,\nu &\sim \mbox{IGa}(\alpha_0,\alpha_0/\nu) \mbox{, indep. for }i=1 \ldots  n \nonumber \\
   \alpha_{i,k} | \delta_i,\beta,\mu & \sim \mbox{Ga}(\beta,\beta/\mu) \mbox{, indep. for }i=1 \ldots  n \nonumber \\
   \delta_i|\bm{\pi} & \sim \mbox{Mult}(1,\bm{\pi}) \mbox{, indep. for } i=1 \ldots  n.
 \label{eq:modelgengg}
 \end{align}
+
 $\delta_1 \ldots \delta_n$ are latent variables indicating what expression
 pattern each gene follows (see Section \ref{sec:modelfit} for more details).
 For example, if there are only two groups $\delta_i$ indicates whether
 gene $i$ is differentially expressed or not.
+
 
 In principle, both the shape and mean parameters are allowed to vary between groups,
 and $\delta_i$ compares both parameters between groups 
@@ -90,15 +83,19 @@ the shape of the distribution between groups).
 However, the \texttt{gaga} library also implements a particular version of the model
 which assumes that the shape parameter is constant across groups,
 {\it i.e.} $\alpha_{i,k}=\alpha_i$ for all $k$.
+
 The coefficient of variation in the Gamma distribution is equal to the inverse square root
 of the shape parameter, and hence assuming constant $\alpha_{i,k}$ is equivalent
 to assuming constant CV across groups.
+
 In most routines the user can choose the constant CV model with the
 option \texttt{equalcv=TRUE} (the default), and the varying CV model with
 the option \texttt{equalcv=FALSE}.
 
+
 The Bayesian model is completed by specifying priors on the hyper-parameters
 that govern the hierarchy:
+
 \begin{align}
   \alpha_0 &\sim \mbox{Ga}(a_{\alpha_0},b_{\alpha_0}); 
   \nu \sim \mbox{IGa}(a_{\nu},b_{\nu}) \nonumber \\
@@ -108,6 +105,7 @@ that govern the hierarchy:
 \label{eq:priorgaga}
 \end{align}
 
+
 The \texttt{gaga} library provides some default values for the prior parameters
 that are a reasonable choice when the data has been normalized
 via the function \texttt{just.rma} 
@@ -115,6 +113,7 @@ from the R library \texttt{affy}
 or \texttt{just.gcrma} from the R library \texttt{just.gcrma}.
 The MiGaGa model extends GaGa by specifying a mixture of inverse gammas
 for $\nu$.
+
 Both models are fit using the routine \texttt{fitGG}: the argument
 \texttt{nclust} indicates the number of components in the mixture
 (\texttt{nclust=1} corresponds to the GaGa model).
@@ -124,12 +123,14 @@ we show how to analyze it with the routines provided with the \texttt{gaga} libr
 In Section \ref{sec:simulate} we simulate a dataset based on the parameter
 estimates obtained from the Armstrong dataset (Armstrong, 2002) %\cite{armstrong:2002},
 as described in (Rossell, 2007) %\cite{rossell:2007}.
+
 Section \ref{sec:modelfit} shows how to fit the model via MCMC sampling and
 in Section \ref{sec:gof} we assess its goodness-of-fit.
 Finally, in Sections \ref{sec:degenes} and \ref{sec:classpredict} we
 conduct inference. Section \ref{sec:degenes} shows how to find differentially
 expressed genes, while Section \ref{sec:classpredict}
 addresses class prediction.
+
 
 \section{Simulating the data}
 \label{sec:simulate}
@@ -142,6 +143,7 @@ As we shall see in the future sections, we use the first five
 samples from each group to fit the model.
 We will then use the model to predict the class for the sixth sample.
 
+
 <<one>>=
 library(gaga)
 set.seed(10)
@@ -151,6 +153,7 @@ balpha <- 1.183; nualpha <- 1683
 probpat <- c(.95,.05)
 xsim <- simGG(n,m,p.de=probpat[2],a0,nu,balpha,nualpha,equalcv=TRUE)
 @ 
+
 
 The object \texttt{xsim} is an \texttt{ExpressionSet}.
 The simulated expression values are accessible through \texttt{exprs(xsim)},
@@ -162,6 +165,7 @@ We save in \texttt{a} a matrix containing the gene-specific $\alpha$ parameters
 Similarly, we save the gene-specific means $\lambda$ in \texttt{l}
 and the expression values in \texttt{x}.
 
+
 <<two>>=
 xsim
 featureData(xsim)
@@ -170,6 +174,7 @@ a <- fData(xsim)[,c("alpha.1","alpha.2")]
 l <- fData(xsim)[,c("mean.1","mean.2")]
 x <- exprs(xsim)
 @ 
+
 
 Figure \ref{fig:fig1}(a) shows
 the marginal distribution (kernel density estimate)
@@ -366,7 +371,6 @@ The figures were generated with the following code:
 <<label=fig4aplot,include=FALSE>>=
 checkfit(gg1,x=x[,c(-6,-12)],groups,type='data',main='')
 @
-
 \setkeys{Gin}{width=0.5\textwidth} 
 <<label=fig4bplot,include=FALSE>>=
 checkfit(gg1,x=x[,c(-6,-12)],groups,type='shape',main='')
@@ -565,5 +569,6 @@ pred2
 
 \bibliographystyle{plainnat}
 \bibliography{references} 
+
 
 \end{document}
