@@ -58,8 +58,5 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
   prior-predictive distribution, \code{\link{simnewsamples}} to generate parameters and
   observations from the posterior predictive, which is useful to check
   goodness-of-fit individually a desired gene. }
-\examples{
-
-}
 \keyword{ distribution }
 \keyword{ models }

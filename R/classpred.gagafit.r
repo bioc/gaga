@@ -2,6 +2,7 @@ classpred.gagafit <- function(gg.fit,xnew,x,groups,prgroups,ngene=100) {
 # Classify a new sample (array) into the group with highest posterior probability
 
 gapprox <- TRUE
+if (ngene>nrow(x)) ngene <- nrow(x)
 sel <- (1:nrow(x))[order(gg.fit$pp[,1])][1:ngene]
 if (!is.vector(xnew)) stop('xnew must be a vector')
 if (!is.numeric(sel)) stop('sel must contain numerical indexes')

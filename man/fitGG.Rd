@@ -24,7 +24,9 @@ fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "quickEM", B, pr
     gene. \code{colnames(patterns)} must match the group levels
     specified in \code{groups}.
     Defaults to two hypotheses: null hypothesis of all groups
-    being equal and full alternative of all groups being different.}
+    being equal and full alternative of all groups being different.
+    The function \code{buildPatterns} can be used to construct a matrix
+    with all possible patterns.}
   \item{equalcv}{\code{equalcv==TRUE} fits model assuming constant CV across groups. \code{equalcv==FALSE} compares cv as well as mean expression levels between groups}
   \item{nclust}{Number of clusters in the MiGaGa model. \code{nclust}
     corresponds to the GaGa model. }

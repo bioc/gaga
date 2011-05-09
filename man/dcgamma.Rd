@@ -50,8 +50,6 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
   from the proposal distribution in a Metropolis-Hastings step. 
 }
 \seealso{ \code{\link{dgamma}}, \code{\link{rgamma}} }
-\examples{
-}
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
 \keyword{ distribution }

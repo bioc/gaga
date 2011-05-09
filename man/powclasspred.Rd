@@ -62,7 +62,8 @@ flexible hierarchical model for microarray
 data analysis. \url{http://rosselldavid.googlepages.com}. }
 \author{ David Rossell }
 \seealso{ \code{\link{classpred}}, \code{\link{fitGG}},
-  \code{\link{parest}} }
+  \code{\link{parest}}. See \code{\link{powfindgenes}} for differential
+  expression power calculations. }
 \examples{
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

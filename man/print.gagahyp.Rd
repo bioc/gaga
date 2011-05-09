@@ -7,7 +7,7 @@
   on the hypotheses (expression patterns) from a GaGa or MiGaGa model.
 }
 \usage{
-print.gagahyp(x, probpat=NA, ...)
+\method{print}{gagahyp}(x, probpat=NA, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -15,8 +15,6 @@ print.gagahyp(x, probpat=NA, ...)
   \item{probpat}{ Vector with either estimated probabilities of each
     hypothesis, or with number of genes classified into each expression pattern. }
   \item{\dots}{Other arguments to be passed on to the generic print function.}
-}
-\details{
 }
 \value{
 Prints hypotheses. When available, also displays estimated proportion of

@@ -168,7 +168,9 @@ void Atx(double **A,double *x,double *z,int rowini,int rowfi,int colini,int colf
 void AtB(double **A, int rowiniA, int rowfiA, int coliniA, int colfiA, double **B, int rowiniB, int rowfiB, int coliniB, int colfiB, double **C); //t(matrix)*matrix, stored in C
 void a_plus_b(double *a, double *b, double *c, int ini, int fi); //Vector sum i.e. c[i]=a[i]+b[i]
 void a_prod_b(double *a, double *b, double *c, int ini, int fi); //Vector prod i.e. c[i]=a[i]*b[i]
-void R_zero(double **, int, int);
+void a_zero(double *, int); //Set vector to zero
+void R_zero(double **, int, int); //Set matrix to zero
+
 int iabs(int x);   //absolute value of an integer
 int imax_xy(int x, int y);
 int imin_xy(int x, int y);

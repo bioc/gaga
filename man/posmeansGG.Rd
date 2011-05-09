@@ -8,7 +8,6 @@
 }
 \usage{
 posmeansGG(gg.fit, x, groups, sel, underpattern)
-posmeansGG.gagafit(gg.fit, x, groups, sel, underpattern)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -51,8 +50,6 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
 \seealso{ \code{\link{fitGG}} for fitting GaGa and MiGaGa models,
   \code{\link{parest}} for computing posterior probabilities of
   each expression pattern. }
-\examples{
-}
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
 \keyword{ distribution }

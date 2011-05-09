@@ -1,3 +1,20 @@
+CHANGES IN VERSION 1.2.0
+- forwsimDiffExpr is now fully operational. Vignette updated with examples.
+
+CHANGES IN VERSION 1.1.2
+- Fixed bug in forwsimDiffExpr which caused the C code to crash
+- Fixed bug in forwsimDiffExpr which caused it to crash for certain randomSeed values
+- Added function buildPatterns to build a matrix indicating which groups are put together under each pattern. 
+
+CHANGES IN VERSION 1.1.1
+- Changed specification of S3 class methods in NAMESPACE file so that now e.g. parest.gagafit is not visible, only parest is visible.
+
+CHANGES IN VERSION 1.1.0
+- Included routines for sequential design of high-throughput experiments
+- Fixed numerical overflow that affected fitGG in some data sets
+- Removed warning from powfindgenes when user selects to use all genes
+- Fixed bug in classpred cause by specifying 'ngenes' greater than the available number of genes in the input data
+
 CHANGES IN VERSION 1.0.8
 - Fixed access to unallocated memory address in C code
 

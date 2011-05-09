@@ -34,7 +34,7 @@ gapprox <- as.integer(gapprox)
 
 if (missing(underpattern)) {
   underpattern <- nrow(gg.fit$patterns)-1
-} else if (underpattern>nrow(gg.fit$patterns)) {
+} else if ((underpattern>=nrow(gg.fit$patterns)) | (underpattern<0)) {
   stop('The specified pattern number is not valid')
 }
 underpattern <- as.integer(underpattern)

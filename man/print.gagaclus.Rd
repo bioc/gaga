@@ -7,14 +7,12 @@
   of clustering genes into expression patterns.
 }
 \usage{
-print.gagaclus(x, ...)
+\method{print}{gagaclus}(x, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{ Object of type \code{gagaclus}. }
   \item{\dots}{Other arguments to be passed on to the generic print function.}
-}
-\details{
 }
 \value{
   Displays the expression patterns and the number of genes classified into

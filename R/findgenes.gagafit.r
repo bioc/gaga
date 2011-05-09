@@ -67,6 +67,6 @@ if (parametric==FALSE) {
   fdrest <- data.frame(fdrseq=fdrseq,fdrest=fdrest)
 }
 
-return(list(efp=z$u,d=z$d,fdr=fdr,fdrpar=fdrpar,fdrest=fdrest,fnr=z$fnr,power=z$power,threshold=z$threshold))
+return(list(truePos=z$u,d=z$d,fdr=fdr,fdrpar=fdrpar,fdrest=fdrest,fnr=z$fnr,power=z$power,threshold=z$threshold))
 
 }

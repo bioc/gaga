@@ -8,7 +8,7 @@
   estimates, if available.
 }
 \usage{
-print.gagafit(x,...)
+\method{print}{gagafit}(x,...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

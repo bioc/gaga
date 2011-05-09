@@ -12,7 +12,6 @@ par <- getpar(gg.fit)
 a0 <- as.double(par$a0); nu <- as.double(par$nu); balpha <- as.double(par$balpha)
 nualpha <- as.double(par$nualpha); probclus <- as.double(par$probclus); probpat <- as.double(par$probpat); nclust <- as.integer(gg.fit$nclust)
 if (nrow(patterns)!=length(probpat)) stop('Argument patterns must be equal to the length of gg.fit$prob')
-if ((missing(genelimit)) & (v0thre==1)) warning("You selected to use all genes. It's recommended to narrow the selection with the arguments v0thre and genelimit")
 if (missing(genelimit)) { genelimit <- nrow(x); }
 
 genelimit <- as.integer(genelimit); v0thre <- as.double(v0thre)

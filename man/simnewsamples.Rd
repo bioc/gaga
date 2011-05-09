@@ -42,8 +42,6 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
 \author{ David Rossell }
 \seealso{ \code{\link{checkfit}} for posterior predictive plot,
   \code{\link{simGG}} for prior predictive simulation. }
-\examples{
-}
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
 \keyword{ distribution }

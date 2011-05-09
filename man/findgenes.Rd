@@ -37,7 +37,7 @@ findgenes(gg.fit, x, groups, fdrmax=.05, parametric=TRUE, B=500)
 }
 \value{
 List with components:
-  \item{efp }{Expected number of true positives.}
+  \item{truePos }{Expected number of true positives.}
   \item{d }{Vector indicating the pattern that each gene is assigned
 to.}
   \item{fdr }{Frequentist estimated FDR that is closest to fdrmax.}

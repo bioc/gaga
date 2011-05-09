@@ -1,46 +1,26 @@
 useDynLib(gaga)
 
-
-
 export( checkfit,
 
-        checkfit.gagafit,
-
         classpred,
-
-        classpred.gagafit,
 
         dcgamma,
 
         findgenes,
 
-        findgenes.gagafit,
-
         fitGG,
+
+        forwsimDiffExpr,
 
         geneclus,
 
-        geneclus.gagafit,
-
         getpar,
-
-        getpar.gagafit,
 
         mcgamma,
 
         parest,
 
-        parest.gagafit,
-
         posmeansGG,
-
-        posmeansGG.gagafit,
-
-        print.gagaclus,
-
-        print.gagafit,
-
-        print.gagahyp,
 
         rcgamma,
 
@@ -48,9 +28,24 @@ export( checkfit,
 
         simnewsamples,
 
-        simnewsamples.gagafit,
-
         powclasspred,
 
-        powclasspred.gagafit )
+        powfindgenes,
+
+        seqBoundariesGrid,
+
+	buildPatterns)
+
+S3method(checkfit,gagafit)
+S3method(classpred,gagafit)
+S3method(findgenes,gagafit)
+S3method(posmeansGG,gagafit)
+S3method(getpar,gagafit)
+S3method(geneclus,gagafit)
+S3method(print,gagaclus)
+S3method(print,gagahyp)
+S3method(parest,gagafit)
+S3method(powclasspred,gagafit)
+S3method(print,gagafit)
+S3method(simnewsamples,gagafit)
 

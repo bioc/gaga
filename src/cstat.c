@@ -1373,6 +1373,11 @@ void a_prod_b(double *a, double *b, double *c, int ini, int fi) {
   for (_i=ini;_i<=fi;_i++) { c[_i]= a[_i]*b[_i]; }
 }
 
+void a_zero(double *a, int p) {
+  int _i;
+  for (_i=0;_i<p;_i++) a[_i]= 0.0;
+}
+
 void R_zero(double **A, int p,int q) 
 {
   int _i, _j;
