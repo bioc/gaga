@@ -32,6 +32,20 @@
 
 \maketitle
 
+Here we illustrate several uses of the package \texttt{gaga},
+including simulation, differential expression analysis, class prediction
+and sample size calculations.
+In Section \ref{sec:intro} we review the GaGa and MiGaGa models.
+In Section \ref{sec:simulate} we simulate gene expression data,
+which we use to fit the GaGa model in Section \ref{sec:modelfit}.
+Diagnostics for model goodness-of-fit are presented in Section \ref{sec:gof}.
+Section \ref{sec:degenes} shows how to find differentially expressed genes,
+Section \ref{sec:fc} how to obtain fold change estimates
+and Section \ref{sec:classpredict} how to classify samples into groups.
+Finally, in Section \ref{sec:design} we perform fixed and sequential
+sample size calculations.
+
+
 
 \section{Introduction}
 \label{sec:intro}
@@ -41,7 +55,7 @@
 %Newton (2001) and Kendziorski (2003) introduced the Gamma-Gamma model to
 analyze microarray data, an elegant and parsimonious hierachical model that allows for
 the borrowing of information between genes.
-\cite{rossell:2007} showed that the assumptions of this model are
+\cite{rossell:2009} showed that the assumptions of this model are
 too simplistic, which resulted in a rather poor fit to several real datasets,
 and developed two extensions of the model: GaGa and MiGaGa.
 The \texttt{gaga} library implements the GaGa and MiGaGa generalizations,
@@ -118,19 +132,6 @@ Both models are fit using the routine \texttt{fitGG}: the argument
 \texttt{nclust} indicates the number of components in the mixture
 (\texttt{nclust=1} corresponds to the GaGa model).
 
-In the remainder of this document we generate a simulated dataset and
-we show how to analyze it with the routines provided with the \texttt{gaga} library.
-In Section \ref{sec:simulate} we simulate a dataset based on the parameter
-estimates obtained from the Armstrong dataset (Armstrong, 2002) %\cite{armstrong:2002},
-as described in (Rossell, 2007) %\cite{rossell:2007}.
-
-Section \ref{sec:modelfit} shows how to fit the model via MCMC sampling and
-in Section \ref{sec:gof} we assess its goodness-of-fit.
-Finally, in Sections \ref{sec:degenes} and \ref{sec:classpredict} we
-conduct inference. Section \ref{sec:degenes} shows how to find differentially
-expressed genes, while Section \ref{sec:classpredict}
-addresses class prediction.
-
 
 \section{Simulating the data}
 \label{sec:simulate}
@@ -139,6 +140,9 @@ We start by loading the library and simulating mRNA expression levels
 for \texttt{n=100} genes and 2 groups, each with 6 samples.
 We set the seed for random number generation so that you can reproduce
 the results presented here.
+We use the parameter
+estimates obtained from the Armstrong dataset (Armstrong, 2002) %\cite{armstrong:2002},
+as described in (Rossell, 2009) %\cite{rossell:2009}.
 As we shall see in the future sections, we use the first five
 samples from each group to fit the model.
 We will then use the model to predict the class for the sixth sample.
@@ -435,7 +439,7 @@ all genes for which the posterior probability of following pattern 0 is above a 
 threshold (Mueller, 2004). %\cite{mueller:2004}.
 The problem is then to find the optimal threshold, which can be done
 parametrically or non-parametrically through the use of permutations
-(for details see Rossell, 2007).%\cite{rossell:2007}
+(for details see Rossell, 2009).%\cite{rossell:2007}
 Here we explore both options, specifying \texttt{B=1000} permutations
 for the non-parametric option.
 
@@ -566,6 +570,169 @@ pred2
 @
 
 
+\section{Designing high-throughput experiments}
+\label{sec:design}
+
+The \texttt{gaga} package incorporates routines which can be used for
+fixed and sequential sample size calculation in high-throughput experiments.
+For details on the methodology see \cite{rossell:2011}.
+We start by simulating some data from a GaGa model.
+Since the computations can be intensive,
+here we simulate data for 20 genes only.
+The question is,
+given the observed data,
+how many more samples should we collect, if any?
+
+<<simulatefs>>=
+set.seed(1)
+x <- simGG(n=20,m=2,p.de=.5,a0=3,nu=.5,balpha=.5,nualpha=25)
+gg1 <- fitGG(x,groups=1:2,method='EM')
+gg1 <- parest(gg1,x=x,groups=1:2)
+@ 
+
+The function \texttt{powfindgenes} evaluates the
+(posterior) expected number of new true
+gene discoveries if one were to obtain an
+additional batch of data
+with \texttt{batchSize} new samples per group.
+For our simulated data,
+we expect that 
+obtaining 1 more sample per group would provide
+no new gene discoveries.
+For 2 and 3 more samples per group we still expect
+to discover less than one new gene
+(which seems reasonable for our simulated data with only 20 genes).
+
+<<powfindgenes>>=
+pow1 <- powfindgenes(gg1, x=x, groups=1:2, batchSize=1, fdrmax=0.05, B=1000)
+pow2 <- powfindgenes(gg1, x=x, groups=1:2, batchSize=2, fdrmax=0.05, B=1000)
+pow3 <- powfindgenes(gg1, x=x, groups=1:2, batchSize=3, fdrmax=0.05, B=1000)
+pow1$m
+pow2$m
+pow3$m
+@ 
+
+As illustrated, calling \texttt{powfindgenes} for different values of
+\texttt{batchSize} can be used to determine the sample size.
+We refer to this approach as fixed sample size calculation,
+since the number of additional samples is fixed from now on,
+regardless of the evidence provided by new data.
+Function \texttt{forwsimDiffExpr} provides a sequential sample
+size alternative.
+The idea is that, every time that we observe new data,
+we can use \texttt{powfindgenes} to estimate the 
+expected number of new gene discoveries for an additional data batch.
+As long as this quantity is large enough, we keep
+adding new samples. When this quantity drops below some threshold
+we stop experimentation.
+\texttt{forwsimDiffExpr} uses forward simulation to determine
+reasonable values for this threshold.
+Shortly, the function simulates \texttt{batchSize} new samples per group
+from the GaGa posterior predictive distribution,
+and for each of them evaluates the expected number of new discoveries
+via \texttt{powfindgenes} (estimated via \texttt{Bsummary} Monte Carlo samples).
+Then \texttt{batchSize} more samples are added,
+and \texttt{powfindgenes} is called again,
+up to a maximum number of batches \texttt{maxBatch}.
+The whole process is repeated \texttt{B} times.
+Notice that, although not illustrated here,
+parallel processing can be used to speed up
+computations ({\it e.g.} see \texttt{mcapply} from package \texttt{multicore}).
+
+<<forwsim>>=
+fs1 <- forwsimDiffExpr(gg1, x=x, groups=1:2,
+maxBatch=3,batchSize=1,fdrmax=0.05, B=100, Bsummary=100, randomSeed=1)
+head(fs1)
+@ 
+
+\texttt{forwsimDiffExpr} returns a \texttt{data.frame}
+indicating, for each simulation and stopping time (number of batches),
+the posterior expectation of the number of true posities (\texttt{u}),
+false discovery and false negative rates (\texttt{fdr}, \texttt{fnr}),
+and power ({\it e.g.} number of detected DE genes at a Bayesian FDR \texttt{fdrmax} 
+divided by overall number of DE genes).
+It also returns the (posterior predictive) expected new DE discoveries
+for one more data batch in \texttt{summary}.
+Since experimentation is always stopped at \texttt{time==maxBatch},
+it is not necessary to evaluate \texttt{summary} at this time point
+and \texttt{NA} is returned.
+
+The output of \texttt{forwsimDiffExpr} can be used to estimate
+the expected number of new true discoveries for each sample size,
+as well as to estimate the expected utility by subtracting
+a sampling cost.
+As illustrated above these results can also be obtained with \texttt{powfindgenes},
+which is much faster computationally.
+
+<<fixedn>>=
+tp <- tapply(fs1$u,fs1$time,'mean')
+tp
+samplingCost <- 0.01
+util <- tp - samplingCost*(0:3)
+util
+@ 
+
+Again, for our simulated data we expect to find very few DE genes
+with 1, 2 or 3 additional data batches.
+For a sampling cost of 0.01, 
+the optimal fixed sample design is to obtain 3 more data batches.
+Here we set a very small sampling cost for illustration purposes,
+although in most applications both the number of genes and 
+the sampling cost will be much larger.
+For instance, \texttt{samplingCost=50} would indicate that the experimenter considers
+it worthwhile to obtain one more batch of samples as long as that allows him to find
+at least 50 new DE genes.
+
+In order to find the optimal sequential design,
+we define a grid of intercept and slope values for the linear stopping boundaries.
+The function \texttt{seqBoundariesGrid}
+returns the expected utility for each intercept and slope in the grid
+in the element \texttt{grid}.
+The element \texttt{opt} contains the optimum
+and the expected utility, FDR, FNR, power and stopping time 
+({\it i.e.} the expected number of data batches).
+
+<<seqn>>=
+b0seq <- seq(0,20,length=200); b1seq <- seq(0,40,length=200)
+bopt <-seqBoundariesGrid(b0=b0seq,b1=b1seq,forwsim=fs1,samplingCost=samplingCost,powmin=0)
+names(bopt)
+bopt$opt
+head(bopt$grid)
+@ 
+
+The expected utility for the optimal boundary is slightly larger than for a fixed sample
+size of 3 batches per group (see above),
+and perhaps more importantly it is achieved with a smaller average sample size.
+The optimal intercept and slope are equal to 0.
+Recall that experimentation at time $t=1,\ldots,$\texttt{batchSize}$-2$ 
+continues as long as \texttt{summary} is greater or equal
+than the stopping boundary.
+Therefore the optimal rule implies never stopping at $t=1$.
+At time \texttt{batchSize}$-1$ ($t=2$ in our example) the optimal decision is to continue
+whenever the one-step ahead expected new true discoveries (\texttt{summary}) is greater than
+\texttt{samplingCost}, regardless of the stopping boundary.
+
+We produce a plot to visualize the results (Figure \ref{fig:forwsim}).
+The plot shows the simulated trajectories for the summary statistic,
+and the optimal stopping boundary.
+
+\setkeys{Gin}{width=0.5\textwidth} 
+<<label=figforwsim,include=FALSE>>=
+plot(fs1$time,fs1$summary,xlab='Additional batches',ylab='E(newly discovered DE genes)')
+abline(bopt$opt['b0'],bopt$opt['b1'])
+text(.2,bopt$opt['b0'],'Continue',pos=3)
+text(.2,bopt$opt['b0'],'Stop',pos=1)
+@ 
+
+\begin{figure}
+\begin{center}
+<<label=figforwsim,fig=TRUE,echo=FALSE>>=
+<<figforwsim>>
+@ 
+\end{center}
+\caption{Forward simulations and optimal sequential rule}
+\label{fig:forwsim}
+\end{figure}
 
 \bibliographystyle{plainnat}
 \bibliography{references} 
