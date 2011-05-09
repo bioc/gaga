@@ -10,8 +10,6 @@
 
 
 
-
-
 //int __iglobal=0;  //debug
 
 double meanu, meanj;                      //Global variables used by euC, euCgrid
@@ -58,9 +56,17 @@ struct pars {
 
   int *gapprox;
 
+  double *c0;
+
 } esteppars;
 
 
+
+
+
+void mybreak() {
+
+}
 
 
 
@@ -72,9 +78,7 @@ struct pars {
 
 
 
-void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, double *jstop,double *b, int *ave,int *nrow,int *simid, double *j, double *u, double *fdr, double *fnr, double *power, double *summary, int *f,double *ineq, int *J, int *optlast)
-
-{
+void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, double *jstop, double *cf_sam, double *b, int *ave,int *nrow,int *simid, double *j, double *u, double *fdr, double *fnr, double *power, double *summary, int *f,double *ineq, int *J, int *optlast) {
 
 /* Evaluates realized utility for a single parametric or non-parametric boundary */
 
@@ -106,7 +110,7 @@ void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, dou
 
   - J: number of distinct stopping time points
 
-  - optlast: optlast==1 means continue at j=J-1 iff summary>0 (corresponds to optimal rule for several utilities)
+  - optlast: optlast==1 means continue at j=J-1 iff summary>cf_sam (corresponds to optimal rule for several utilities)
 
 */
 
@@ -136,7 +140,7 @@ void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, dou
 
   for(i=0;i<((*nrow)-1); i++) {
 
-    if ((found==0) && ((jdif<(*J-2)) || ((jdif==(*J-2)) && ((*optlast)==0)) )) {     //If not in 2 last time points OR in 2nd last with *optlast==0
+    if ((found==0) && ((jdif<(*J-1)) || ((jdif==(*J-1)) && ((*optlast)==0)) )) {     //If not in 2 last time points OR in 2nd last with *optlast==0
 
       if ((*f)==1) {                                                  //Linear boundaries
 
@@ -170,9 +174,9 @@ void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, dou
 
       }
 
-    } else if ((found==0) && (jdif==(*J-2)) && ((*optlast)==1)) {                 //If at the second to the last time point and *optlast==1
+    } else if ((found==0) && (jdif==(*J-1)) && ((*optlast)==1)) {                 //If at the second to the last time point and *optlast==1
 
-      if (summary[i]<0) {
+      if (summary[i]<= *cf_sam) {
 
         if ((*ave)==0) { ustop[k]= u[i]; jstop[k]= j[i]; }
 
@@ -180,7 +184,7 @@ void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, dou
 
       }
 
-    } else if ((found==0) && (jdif==(*J-1))) {
+    } else if ((found==0) && (jdif==(*J))) {
 
       if ((*ave)==0) { ustop[k]= u[i]; jstop[k]= j[i]; }                            //Always stop at the time horizon
 
@@ -222,7 +226,7 @@ void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, dou
 
 
 
-void euCgrid(double *b0opt, double *b1opt, double *uopt, double *fdropt, double *fnropt, double *poweropt, double *jopt, double *ustop, double *fdrstop, double *fnrstop, double *powerstop, double *jstop, double *cf_sam, int *nb0, int *nb1, double *b0, double *b1, int *ave, int *nsim, int *nrow,int *simid, double *j, double *minj, double *u, double *fdr, double *fnr, double *power, double *summary, double *fdrmax, double *fnrmax, double *powmin, int *f, double *ineq, int *J, int *optlast) {
+void euCgrid(double *b0opt, double *b1opt, double *uopt, double *fdropt, double *fnropt, double *poweropt, double *jopt, double *b0grid, double *b1grid, double *ustop, double *fdrstop, double *fnrstop, double *powerstop, double *jstop, double *cf_sam, int *nb0, int *nb1, double *b0, double *b1, int *ave, int *nsim, int *nrow,int *simid, double *j, double *minj, double *u, double *fdr, double *fnr, double *power, double *summary, double *fdrmax, double *fnrmax, double *powmin, int *f, double *ineq, int *J, int *optlast) {
 
 /* Evaluates realized utility on a grid */
 
@@ -288,11 +292,13 @@ void euCgrid(double *b0opt, double *b1opt, double *uopt, double *fdropt, double 
 
   - fnropt: mean fnr at b0opt,b1opt
 
+  - b0grid, b1grid: (b0,b1) values for each grid point
+
   - poweropt: mean power at b0opt,b1opt
 
   - jopt: mean j at b0opt,b1opt
 
-  - ustop: if ave==0 a vector with the observed terminal utility for each simulation. If ave==1 only the means returned.
+  - ustop: if ave==0 a vector with the observed terminal utility for each (b0,b1) in each simulation. If ave==1 only the means for each (b0,b1) pair are returned.
 
   - fdrstop: fdr averaged over simulations.
 
@@ -314,13 +320,15 @@ void euCgrid(double *b0opt, double *b1opt, double *uopt, double *fdropt, double 
 
       for (k=0; k<(*nb1); k++) {
 
-        b[0] = b0[i]; b[1] = b1[k];
+        b[0] = b0grid[i*(*nb1)+k]= b0[i]; b[1] = b1grid[i*(*nb1)+k]= b1[k];
 
         pos2= i*(*nb1)+k;
 
         if ((*ave)==1) { pos1= pos2; } else { pos1= (*nsim)*pos2; }
 
-        euC(ustop+pos1,fdrstop+pos2,fnrstop+pos2,powerstop+pos2,jstop+pos1,b,ave,nrow,simid,j,u,fdr,fnr,power,summary,f,ineq,J,optlast); //Evaluate utility
+        euC(ustop+pos1,fdrstop+pos2,fnrstop+pos2,powerstop+pos2,jstop+pos1,cf_sam,b,ave,nrow,simid,j,u,fdr,fnr,power,summary,f,ineq,J,optlast); //Evaluate utility
+
+        ustop[pos1]= meanu - (*cf_sam)*(meanj-(*minj));
 
 	feasible= (*(fdrstop+pos2) <= *fdrmax) + (*(fnrstop+pos2) <= *fnrmax) + (*(powerstop+pos2) >= *powmin);
 
@@ -328,7 +336,7 @@ void euCgrid(double *b0opt, double *b1opt, double *uopt, double *fdropt, double 
 
           (*b0opt) = b[0]; (*b1opt) = b[1];
 
-          (*uopt)= meanu - (*cf_sam)*((*jopt)-(*minj)+1); (*jopt) = meanj;
+          (*uopt)= ustop[pos1]; (*jopt) = meanj;
 
           (*fdropt) = *(fdrstop+pos2); (*fnropt) = *(fnrstop+pos2); (*poweropt) = *(powerstop+pos2);
 
@@ -338,11 +346,11 @@ void euCgrid(double *b0opt, double *b1opt, double *uopt, double *fdropt, double 
 
         //If current point satisfies more constraints than the optimal, or it satisfies as many constraints AND it improves utility, update optimum 
 
-        if ((feasible>feasibleopt) || ((feasible==feasibleopt) && (meanu-(*cf_sam)*(meanj-(*minj)+1)>(*uopt)))) {
+        if ((feasible>feasibleopt) || ((feasible==feasibleopt) && (ustop[pos1]>(*uopt)))) {
 
           (*b0opt) = b[0]; (*b1opt) = b[1];
 
-          (*uopt)= meanu - (*cf_sam)*((*jopt)-(*minj)+1); (*jopt) = meanj;
+          (*uopt)= ustop[pos1]; (*jopt) = meanj;
 
           (*fdropt) = *(fdrstop+pos2); (*fnropt) = *(fnrstop+pos2); (*poweropt) = *(powerstop+pos2);
 
@@ -442,7 +450,7 @@ void euCsearch(double *bopt, double *uopt, double *fdropt, double *fnropt, doubl
 
   for (i=0; i<(*npar); i++) { bcur[i]= bini[i]; bopt[i]= bini[i]; }                               //initialize bopt, bcur
 
-  euC(uopt,fdropt,fnropt,poweropt,jopt,bopt,&one,nrow,simid,j,u,fdr,fnr,power,summary,f,ineq,J,optlast);                   //initialize uopt
+  euC(uopt,fdropt,fnropt,poweropt,jopt,cf_sam,bopt,&one,nrow,simid,j,u,fdr,fnr,power,summary,f,ineq,J,optlast);                   //initialize uopt
 
 
 
@@ -460,7 +468,7 @@ void euCsearch(double *bopt, double *uopt, double *fdropt, double *fnropt, doubl
 
 	bcur[i]= bmin[i] + k*binc[i];
 
-	euC(&ucur,&fdrcur,&fnrcur,&powercur,&jcur,bcur,&one,nrow,simid,j,u,fdr,fnr,power,summary,f,ineq,J,optlast);
+	euC(&ucur,&fdrcur,&fnrcur,&powercur,&jcur,cf_sam,bcur,&one,nrow,simid,j,u,fdr,fnr,power,summary,f,ineq,J,optlast);
 
 	if ((ucur-(*cf_sam)*jcur)>((*uopt)-(*cf_sam)*(*jopt))) { 
 
@@ -504,7 +512,7 @@ void euCsearch(double *bopt, double *uopt, double *fdropt, double *fnropt, doubl
 
 
 
-void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, double *power, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *util, double *cf, double *cf_sam, int *genelimit, double *v0thre, int *nrow, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *fdrmax, int *gapprox) {
+void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, double *power, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *util, double *cf, double *cf_sam, int *genelimit, double *v0thre, int *simprior, int *nrow, int *ncol, double *x, int *groups, int *K, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, double *fdrmax, int *trace, int *gapprox, int *randomSeed) {
 
 /* Performs forward simulations for the gene classification problem using a Gamma/Gamma model */
 
@@ -532,11 +540,13 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
    - v0thre: only genes with v0thre<v0 (prob of being equally expressed across all groups) will be used
 
+   - simprior: for simprior==1 data is simulated from prior predictive, for simprior==0 data is simulated from posterior based on data in x
+
    - nrow: number of rows of x
 
    - ncol: number of columns of x
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to (length ncol)
 
@@ -550,8 +560,6 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
    - nclust: number of clusters in hyper-prior for (alpha,lambda)
 
-   - cluslist: list of clusters to be taken into account when computing post prob. This option can be used to exclude clusters with very small probabilities
-
    - rho: mixing probabilities for clusters in hyper-prior for (alpha,lambda)
 
    - prob: vector with estimated probability of each expression pattern (length *npat)
@@ -562,9 +570,13 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - fdrmax: upper bound for E(FDR). Ignored if util!=1.
+
+   - trace: if set to 1 iteration progress is printed
+
+   - randomSeed: integer vector of length 2 with seeds for random number generation
 
 */
 
@@ -574,7 +586,7 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
    - time: time
 
-   - u: expected terminal utility (doesn't include sampling cost)
+   - u: expected terminal utility (does not include sampling cost)
 
    - fdr: expected fdr
 
@@ -582,15 +594,25 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
    - power: power as estimated by E(TP)/E(positives)
 
-   - summary: summary statistic whose values will be used to define stopping regions. It's a matrix with the increment in utility up to 'stepsum' steps ahead in time.
+   - summary: summary statistic whose values will be used to define stopping regions. It is a matrix with the increment in utility up to 'stepsum' steps ahead in time.
 
 */
 
 
 
-  int i,j,k, one=1, zero=0, ncolsumx, ncolxpred, uselpred, init0, *d, *dpred, *groupspred, deltat, nsel, *sel, *cluslist;
+  int i,j,k, one=1, zero=0, ncolsumx, ncolxpred, uselpred, init0, *d, *dpred, *groupspred, deltat, nsel, *sel, *cluslist, B10;
 
   double *sumx, *sumxpred, *sumxtot, *prodx, *prodxpred, *prodxtot, *nobsx, *nobsxpred, *nobsxtot, *xpred, *apred, *lpred, *m, *s, *v, *vpred, uobs, fdrobs, fnrobs, powobs, threshold, lhood, preceps=0.01;
+
+  //  FILE *outfile; int idebug, jdebug; //debug
+
+
+
+  if (randomSeed[0]==0) { randomSeed[0]= 1; }  //0 values are problematic for setting seed
+
+  if (randomSeed[1]==0) { randomSeed[1]= 1; }
+
+  setall(randomSeed[0],randomSeed[1]); //random number seed
 
 
 
@@ -607,6 +629,10 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
   //Allocate memory
 
   cluslist= ivector(0,*nclust);
+
+  for (i=0; i<(*nclust); i++) { cluslist[i]= i; }
+
+  cluslist[*nclust]= -1;
 
   sumx= dvector(0, (*nrow)*ncolsumx); sumxpred= dvector(0, (*nrow)*ncolsumx); sumxtot= dvector(0, (*nrow)*ncolsumx);
 
@@ -638,25 +664,39 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
   sel= ivector(0,*nrow);
 
-  for (i=0; i<(*nrow); i++) { sel[i]= i; }
+  if (*simprior == 0) {          //if simulating from posterior predictive
 
-  compute_sumxC(sumx,prodx,nobsx,equalcv,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
+    for (i=0; i<(*nrow); i++) { sel[i]= i; }
+
+    compute_sumxC(sumx,prodx,nobsx,equalcv,nrow,sel,&ncolsumx,ncol,x,groups,K,npat,patterns,ngrouppat,&one);
+
+    pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&zero,gapprox);
+
+    sel_mostDEgenes(&nsel,sel,genelimit,v0thre,nrow,npat,v);        //select most DE genes
+
+  } else {                       //if simulating from prior predictive
+
+    a_zero(sumx,(*nrow)*ncolsumx);
+
+    if (*equalcv ==1) a_zero(prodx,*nrow); else a_zero(prodx,(*nrow)*ncolsumx);
+
+    a_zero(nobsx,ncolsumx);
+
+    nsel= *nrow;
+
+    for (i=0; i< *nrow; i++) sel[i]=i;
+
+  }
 
   for (i=0; i<(*nclust); i++) { cluslist[i]= i; }
 
   cluslist[*nclust]= -1;
 
-  pp_ggC(v,&lhood,nrow,sel,ncol,x,groups,K,alpha0,nu,balpha,nualpha,equalcv,nclust,cluslist,rho,prob,npat,patterns,ngrouppat,sumx,prodx,nobsx,sumxpred,prodxpred,nobsxpred,&zero,gapprox);
-
-
-
-  //Select most DE genes
-
-  sel_mostDEgenes(&nsel,sel,genelimit,v0thre,nrow,npat,v);
-
 
 
   //Loop over forward simulations
+
+  if (*B>10) B10= (*B)/10; else B10=1;
 
   for (i=0; i<(*B); i++) {
 
@@ -664,13 +704,19 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
     copy_sumxC(sumxtot,prodxtot,nobsxtot,equalcv,&nsel,sel,&ncolsumx,sumx,prodx,nobsx); //copy contents of sumx, nobsx into sumxtot, nobsxtot
 
-
-
     //Loop over time
 
     for (j=0; j<((*J)-(*Jini)); j++) {
 
-      simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+      if (*simprior ==1) {               //simulate from the prior predictive
+
+	simprior_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,nrow,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,prob,npat,patterns,ngrouppat);
+
+      } else {                           //simulate from the posterior predictive
+
+	simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+
+      }
 
       compute_sumxC(sumxpred,prodxpred,nobsxpred,equalcv,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&init0);
 
@@ -688,7 +734,7 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
       //Compute summary statistic
 
-      if (j<(*J - *Jini -1)) {      //if we're not at the last time point compute summary stat
+      if (j<(*J - *Jini -1)) {      //if not at the last time point, compute summary stat
 
 	for (k=0; k<(*stepsum); k++) {
 
@@ -696,11 +742,11 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
 	  utgene_predC(m+k,s+k,&deltat,Bsummary,&preceps,util,cf,genelimit,v0thre,&nsel,sel,&one,nrow,ncol,x,groups,K,vpred,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,prob,npat,patterns,ngrouppat,fdrmax,sumxtot,prodxtot,nobsxtot,&one,gapprox);
 
-          m[k]= m[k] - uobs - (k+1)*(*cf_sam)*((*util)!=1);   //for util!=1 substract sampling cost
+          m[k]= m[k] - uobs - (k+1)*(*cf_sam);   //always include sampling cost in summary
 
 	}
 
-      } else {                      //if it's last time point don't compute summary (-9999 indicates missing)
+      } else {                      //if last time point, do not compute summary (-9999 indicates missing)
 
 	for (k=0; k<(*stepsum); k++) { m[k]= -9999; }
 
@@ -724,9 +770,11 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
       for (k=0; k<(*stepsum); k++) { summary[(*stepsum)*(i*(*J - *Jini)+j)+k]= m[k]; }
 
-
-
     }  //End loop over time
+
+
+
+  if ((*trace==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
 
   }  //End loop over forw simulations
 
@@ -766,15 +814,13 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
   free_dvector(m,0,*stepsum); free_dvector(s,0,*stepsum);
 
-
-
 }
 
 
 
 
 
-void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *genelimit, double *v0thre, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, int *gapprox) {
+void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summary, int *B, int *Bsummary, int *stepsum, int *J, int *Jini, int *mpred, int *genelimit, double *v0thre, int *simprior, int *nrow, int *ncol, double *x, int *groups, int *K, double *Kprob, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat, int *trace, int *gapprox, int *randomSeed) {
 
 /* Performs forward simulations for the sample classification problem using a Gamma/Gamma model */
 
@@ -796,11 +842,13 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
    - v0thre: only the genes with v0thre>=v0 (prob of being equally expressed across all groups) will be used to classify samples
 
+   - simprior: for simprior==1 data is simulated from prior predictive, for simprior==0 data is simulated from posterior based on data in x
+
    - nrow: number of rows of x
 
    - ncol: number of columns of x
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to (length ncol)
 
@@ -828,9 +876,13 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
+
+   - trace: if set to 1 iteration progress is printed
 
    - gapprox: for gapprox==0 Gamma with matching mean & var is used, for gapprox==1 a faster version is used
+
+   - randomSeed: integer vector of length 2 with seeds for random number generation
 
 */
 
@@ -844,15 +896,19 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
    - cc: matrix with estimated prob. of correct classification for each of the K groups (B*(J-Jini) rows, K cols)
 
-   - summary: matrix with summary statistics whose values will be used to define stopping regions. It's a matrix with the increment in utility up to 'stepsum' steps ahead in time (B*(J-Jini) rows, stepsum cols)
+   - summary: matrix with summary statistics whose values will be used to define stopping regions. It is a matrix with the increment in utility up to 'stepsum' steps ahead in time (B*(J-Jini) rows, stepsum cols)
 
 */
 
 
 
-  int i,j,k, one=1, zero=0, ncolsumx, ncolxpred, uselpred, init0, *dpred, *groupspred, deltat, nsel=0, *sel, *ngroup, *nccpred, *cluslist;
+  int i,j,k, one=1, zero=0, ncolsumx, ncolxpred, uselpred, init0, *dpred, *groupspred, deltat, nsel=0, *sel, *ngroup, *nccpred, *cluslist, B10;
 
   double *sumx, *sumxpred, *sumxtot, *prodx, *prodxpred, *prodxtot, *nobsx, *nobsxpred, *nobsxtot, *xpred, *apred, *lpred, *m, *s, *v, *vpred, uobs, *ccobs, *ccpred, lhood, preceps=0.001, seobs, sepred;
+
+
+
+  setall(randomSeed[0],randomSeed[1]); //random number seed
 
 
 
@@ -869,6 +925,10 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
   //Allocate memory
 
   cluslist= ivector(0,*nclust);
+
+  for (i=0; i<(*nclust); i++) { cluslist[i]= i; }
+
+  cluslist[*nclust]= -1;
 
   sumx= dvector(0, (*nrow)*ncolsumx); sumxpred= dvector(0, (*nrow)*ncolsumx); sumxtot= dvector(0, (*nrow)*ncolsumx);
 
@@ -924,6 +984,8 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
   //Loop over forward simulations
 
+  if (*B>10) B10= (*B)/10; else B10=1;
+
   for (i=0; i<(*B); i++) {
 
     uselpred= 0; init0= 1;
@@ -936,7 +998,17 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
     for (j=0; j<((*J)-(*Jini)); j++) {
 
-      simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+      if (*simprior ==1) {               //simulate from the prior predictive
+
+	simprior_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,nrow,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,prob,npat,patterns,ngrouppat);
+
+      } else {                           //simulate from the posterior predictive
+
+	simpred_ggC(xpred,dpred,apred,lpred,&uselpred,mpred,groups,K,&nsel,sel,nrow,ncol,x,alpha0,nu,balpha,nualpha,equalcv,nclust,rho,v,npat,patterns,ngrouppat,sumx,prodx,nobsx,&one,gapprox);
+
+      }
+
+
 
       compute_sumxC(sumxpred,prodxpred,nobsxpred,equalcv,&nsel,sel,&ncolsumx,&ncolxpred,xpred,groupspred,K,npat,patterns,ngrouppat,&init0);
 
@@ -956,7 +1028,7 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
       //Compute summary statistic
 
-      if (j<(*J - *Jini -1)) {      //if we're not at the last time point compute summary stat
+      if (j<(*J - *Jini -1)) {      //if not at the last time point, compute summary stat
 
 	for (k=0; k<(*stepsum); k++) {
 
@@ -968,7 +1040,7 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
 	}
 
-      } else {                      //if it's last time point don't compute summary (-9999 indicates missing)
+      } else {                      //if it is last time point do not compute summary (-9999 indicates missing)
 
 	for (k=0; k<(*stepsum); k++) { m[k]= -9999; }
 
@@ -989,6 +1061,8 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
 
     }  //End loop over time
+
+    if ((*trace==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
 
   }  //End loop over forw simulations
 
@@ -1216,7 +1290,7 @@ void initpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  d
 
 void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  double *rho, double *prob, double *lhood, int *B, double *a_alpha0, double *b_alpha0, double *a_nu, double *b_nu, double *a_balpha, double *b_balpha, double *a_nualpha, double *b_nualpha, double *p_rho, double *p_prob, double *alpha0ini, double *nuini, double *balphaini, double *nualphaini, double *rhoini, double *probini, int *nrow, int *ncol, double *x, int *groups, int *K, int *equalcv, int *nclust, int *npat, int *patterns, int *ngrouppat, int *gapprox, int *trace) {
 
-/* Fits GaGa model via Gibbs' sampling */
+/* Fits GaGa model via Gibbs sampling */
 
 /* Input
 
@@ -1250,7 +1324,7 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
    - ncol: number of columns of x (samples).
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to
 
@@ -1486,7 +1560,7 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
   int i, j, npar, iter, maxit, ncolsumx, *sel, one=1, justlhood, *colini;
 
-  double *sumx, *prodx, *nobsx, *th, *thold, **dirth, ftol=1.0e-2, fret, fold, eps, epsth;
+  double *sumx, *prodx, *nobsx, *th, *thold, **dirth, ftol=1.0e-2, fret, fold, eps, epsth, c0;
 
 
 
@@ -1564,6 +1638,8 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
   esteppars.gapprox= gapprox;
 
+  c0= 1; esteppars.c0= &c0;
+
 
 
   //initial parameter values and initial directions for miminization algorithm
@@ -1605,6 +1681,18 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
     }
 
   }
+
+
+
+    //Compute constant to add to the log-likelihood, to avoid numerical overflow
+
+    for (j=1; j<= *nclust; j++) { alpha0[j-1]= exp(th[j]); nu[j-1]= exp(th[*nclust +j]); }
+
+    (*balpha)= exp(th[2*(*nclust)+1]); (*nualpha)= exp(th[2*(*nclust)+2]);
+
+    c0= pdfcond_pat_clus_nopred(sel[0],0,0,alpha0,nu,balpha,nualpha,esteppars.ngrouppat,esteppars.colini,*(esteppars.ncolsumx),esteppars.sumx,esteppars.prodx,esteppars.nobsx,esteppars.equalcv);
+
+    esteppars.c0= &c0;
 
 
 
@@ -1666,6 +1754,8 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
   for (i=0,eps=1,epsth=1; (i< *B) && (eps>.01) && (epsth>.01); i++) {
 
+    //M-step
+
     justlhood= 1;
 
     for (j=1; j<(2*(*nclust)+2); j++) { thold[j]= th[j]; }
@@ -1673,6 +1763,8 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
     minimize(th,dirth,npar,ftol,&iter,&fret,f,maxit);  //M-step
 
 
+
+    //E-step
 
     justlhood= 0;
 
@@ -1683,6 +1775,8 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
     fold= *lhood;
 
     for (j=1, epsth=0; j<(2*(*nclust)+2); j++) { epsth+= (th[j]-thold[j])*(th[j]-thold[j]); }
+
+    epsth= sqrt(epsth);
 
 
 
@@ -1758,6 +1852,8 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
   free_dvector(esteppars.lhood,0,1);
 
+
+
   free_dvector(th,1,npar); free_dvector(thold,1,npar);
 
   free_dmatrix(dirth,1,npar,1,npar);
@@ -1794,7 +1890,7 @@ void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, doubl
 
    - method: 1 for MH, 0 for Simulated Annealing
 
-   - Bgibbs: number of Gibb's sampling iterations to train the MH proposal parameters.
+   - Bgibbs: number of Gibbs sampling iterations to train the MH proposal parameters.
 
    - h_alpha0, h_nu, h_balpha, h_nualpha, h_rho, h_prob: MH proposal parameters. Ignored unless Bgibbs==0. See dproposal for the parameter meaning
 
@@ -1814,7 +1910,7 @@ void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, doubl
 
     if ((*trace)==1) printf("Training proposal parameters...\n");
 
-    //Do a few Gibbs' iterations 
+    //Do a few Gibbs iterations 
 
     a0gibbs= dvector(0,(*Bgibbs)*(*nclust)); nugibbs= dvector(0,(*Bgibbs)*(*nclust));
 
@@ -2270,7 +2366,7 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
 
    - ncol: number of columns of x (samples).
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to
 
@@ -2294,7 +2390,7 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on.
 
@@ -2302,7 +2398,7 @@ void sampleclas_ggC(int *d, double *pgroup, double *xnew, int *nsel, int *sel, i
 
    - nobsx: number of terms in the sum. As for sumx, the first ngrouppat[0] cols correspond to pattern 0 and so on.
 
-   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they're computed from the data x.
+   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they are computed from the data x.
 
    - gapprox: for gapprox==0 Gamma with matching mean & var is used, for gapprox==1 a faster version is used
 
@@ -2490,7 +2586,7 @@ void maxwtpfp(double *u, int *d, double *fdr, double *fnr, double *cf, int *nsel
 
    sel: indexes of the nsel genes
 
-   v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+   v: vector with posterior probabilities. It is really a matrix with genes in rows and expression patterns in cols, entered in row order.
 
    npat: number of columns of v
 
@@ -2530,7 +2626,7 @@ void maxwtpfp(double *u, int *d, double *fdr, double *fnr, double *cf, int *nsel
 
     }
 
-    if (vmax > v0*(cf[0]+cf[1])/(cf[2]+cf[3])) {                                  //determine if it's optimal to assign gene to pattern with highest prob
+    if (vmax > v0*(cf[0]+cf[1])/(cf[2]+cf[3])) {                                  //determine if it is optimal to assign gene to pattern with highest prob
 
       d[sel[i]]= jmax;
 
@@ -2574,7 +2670,7 @@ void minfnrstfdr(double *u, double *threshold, int *d, double *fdr, double *fnr,
 
     sel: indexes of the nsel genes
 
-    v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+    v: vector with posterior probabilities. It is really a matrix with genes in rows and expression patterns in cols, entered in row order.
 
     npat: number of columns of v
 
@@ -2690,7 +2786,7 @@ void geneclus(int *d, double *ppat, int *nsel, int *sel, double *v, int *npat) {
 
     sel: indexes of the nsel genes
 
-    v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+    v: vector with posterior probabilities. It is really a matrix with genes in rows and expression patterns in cols, entered in row order.
 
     npat: number of columns of v
 
@@ -3176,7 +3272,7 @@ void countde_threshold(int *nde, double *threshold, int *nthre, int *nrow, doubl
 
 void countde(int *nde, double *threshold, int *nthre, double *fdrseq, int *nrow, double *v, int *npat) {
 
-//Count nb of genes declared DE by Mueller's optimal procedure and the corresponding threshold on the posterior probability of EE, for a sequence of bounds on the E(FDR)
+//Count nb of genes declared DE by Mueller optimal procedure and the corresponding threshold on the posterior probability of EE, for a sequence of bounds on the E(FDR)
 
 /* Input arguments
 
@@ -3256,7 +3352,7 @@ void utgene_parC(double *u, int *d, double *fdr, double *fnr, double *power, dou
 
    sel: indexes of the nsel genes
 
-   v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+   v: vector with posterior probabilities. It is really a matrix with genes in rows and expression patterns in cols, entered in row order.
 
    npat: number of columns of v
 
@@ -3316,7 +3412,7 @@ void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, 
 
    - nsel: if usesel==1 expression values are simulated for nsel genes only and genelimit, v0thre are ignored. If usesel==0 nsel is ignored.
 
-   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it's determined based on v0thre and genelimit and returned
+   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it is determined based on v0thre and genelimit and returned
 
    - usesel: if usesel==1 expression values are simulated for genes indicated in the sel vector. If usesel==0 genelimit and v0thre are used to define what genes to simulate for
 
@@ -3324,7 +3420,7 @@ void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, 
 
    - ncol: number of columns of x (samples).
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to
 
@@ -3350,7 +3446,7 @@ void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, 
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - ncolsumx: number of columns of sumx
 
@@ -3360,7 +3456,7 @@ void utsample_ggC(double *ccall, double *seccall, double *ccgroup, int *ngroup, 
 
    - nobsx: number of terms in the sum. As for sumx, the first ngrouppat[0] cols correspond to pattern 0 and so on.
 
-   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they're computed from the data x.
+   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they are computed from the data x.
 
    - gapprox: for gapprox==0 Gamma with matching mean & var is used, for gapprox==1 a faster version is used
 
@@ -3472,7 +3568,7 @@ void simnewPP_ggC(double *pp, int *deltat, int *B, double *preceps, int *util, d
 
    - nsel: if usesel==1 expression values are simulated for nsel genes only and genelimit, v0thre are ignored. If usesel==0 nsel is ignored.
 
-   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it's determined based on v0thre and genelimit and returned
+   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it is determined based on v0thre and genelimit and returned
 
    - usesel: if usesel==1 expression values are simulated for genes indicated in the sel vector. If usesel==0 genelimit and v0thre are used to define what genes to simulate for
 
@@ -3480,13 +3576,13 @@ void simnewPP_ggC(double *pp, int *deltat, int *B, double *preceps, int *util, d
 
    - ncol: number of columns of x
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to
 
    - K: number of groups e.g. group 0 for control, group 1 for type A cancer, group 2 for type B cancer
 
-   - v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+   - v: vector with posterior probabilities. It is really a matrix with genes in rows and expression patterns in cols, entered in row order.
 
    - alpha0: estimate for alpha0 parameter in Gamma/Gamma model (shape parameter for hyper-prior)
 
@@ -3502,7 +3598,7 @@ void simnewPP_ggC(double *pp, int *deltat, int *B, double *preceps, int *util, d
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - fdrmax: upper bound for E(FDR). Ignored if util!=1.
 
@@ -3512,7 +3608,7 @@ void simnewPP_ggC(double *pp, int *deltat, int *B, double *preceps, int *util, d
 
    - nobsx: number of terms in the sum. As for sumx, the first ngrouppat[0] cols correspond to pattern 0 and so on.
 
-   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they're computed from the data x.
+   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they are computed from the data x.
 
    - gapprox: for gapprox==1 the normalization constant for the conjugate Gamma shape distributions is computed approximately
 
@@ -3654,7 +3750,7 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
    - nsel: if usesel==1 expression values are simulated for nsel genes only and genelimit, v0thre are ignored. If usesel==0 nsel is ignored.
 
-   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it's determined based on v0thre and genelimit and returned
+   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it is determined based on v0thre and genelimit and returned
 
    - usesel: if usesel==1 expression values are simulated for genes indicated in the sel vector. If usesel==0 genelimit and v0thre are used to define what genes to simulate for
 
@@ -3662,13 +3758,13 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
    - ncol: number of columns of x
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to
 
    - K: number of groups e.g. group 0 for control, group 1 for type A cancer, group 2 for type B cancer
 
-   - v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+   - v: vector with posterior probabilities. It is really a matrix with genes in rows and expression patterns in cols, entered in row order.
 
    - alpha0: estimate for alpha0 parameter in Gamma/Gamma model (shape parameter for hyper-prior)
 
@@ -3684,7 +3780,7 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - fdrmax: upper bound for E(FDR). Ignored if util!=1.
 
@@ -3694,7 +3790,7 @@ void utgene_predC(double *m, double *s, int *deltat, int *B, double *preceps, in
 
    - nobsx: number of terms in the sum. As for sumx, the first ngrouppat[0] cols correspond to pattern 0 and so on.
 
-   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they're computed from the data x.
+   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they are computed from the data x.
 
    - gapprox: for gapprox==1 the normalization constant for the conjugate Gamma shape distributions is computed approximately
 
@@ -3846,7 +3942,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
    - nsel: if usesel==1 expression values are simulated for nsel genes only and genelimit, v0thre are ignored. If usesel==0 nsel is ignored.
 
-   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it's determined based on v0thre and genelimit and returned
+   - sel: if usesel==1 vector of length nrow containing the keys of the genes to simulate for. If usesel==0 it is determined based on v0thre and genelimit and returned
 
    - usesel: if usesel==1 expression values are simulated for genes indicated in the sel vector. If usesel==0 genelimit and v0thre are used to define what genes to simulate for
 
@@ -3854,7 +3950,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
    - ncol: number of columns of x
 
-   - x: vector with observations used to fit the model. It's really a matrix with genes in rows and samples in cols, entered in row order.
+   - x: vector with observations used to fit the model. It is really a matrix with genes in rows and samples in cols, entered in row order.
 
    - groups: vector indicating what group each column in x corresponds to
 
@@ -3862,7 +3958,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
    - Kprob: vector with prior probabilities for each group
 
-   - v: vector with posterior probabilities. It's really a matrix with genes in rows and expression patterns in cols, entered in row order.
+   - v: vector with posterior probabilities. It is really a matrix with genes in rows and expression patterns in cols, entered in row order.
 
    - alpha0: estimate for alpha0 parameter in Gamma/Gamma model (shape parameter for hyper-prior)
 
@@ -3878,7 +3974,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on.
 
@@ -3886,7 +3982,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
    - nobsx: number of terms in the sum. As for sumx, the first ngrouppat[0] cols correspond to pattern 0 and so on.
 
-   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they're computed from the data x.
+   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they are computed from the data x.
 
    - gapprox: for gapprox==1 the normalization constant for the conjugate Gamma shape distributions is computed approximately
 
@@ -4082,7 +4178,7 @@ void compute_sumxC(double *sumx, double *prodx, double *nobsx, int *equalcv, int
 
   - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-               (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as argument)
+               (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as argument)
 
   - init0: if *init0==1 sumx, prodx and nobsx are initialized to 0, otherwise the corresponding sums are added to its previous contents
 
@@ -4308,9 +4404,13 @@ void copy_sumxC(double *sumxnew, double *prodxnew, double *nobsnew, int *equalcv
 
   if (*equalcv == 1) {
 
-    for (i=0; i<(*nsel); i++) { for (j=0; j<(*ncolsumx); j++) { sumxnew[sel[i]*(*ncolsumx)+j]= sumx[sel[i]*(*ncolsumx)+j]; } }
+    for (i=0; i<(*nsel); i++) { 
 
-    prodxnew[sel[i]]= prodx[sel[i]];
+      for (j=0; j<(*ncolsumx); j++) { sumxnew[sel[i]*(*ncolsumx)+j]= sumx[sel[i]*(*ncolsumx)+j]; }
+
+      prodxnew[sel[i]]= prodx[sel[i]];
+
+    }
 
   } else {
 
@@ -4350,7 +4450,7 @@ void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x,
 
    - ncol: number of columns of x
 
-   - x: matrix with observations used to fit the model (doesn't need to be in any specific order)
+   - x: matrix with observations used to fit the model (does not need to be in any specific order)
 
    - groups: vector indicating what group each column in x corresponds to
 
@@ -4376,7 +4476,7 @@ void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x,
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on. If usesumx==0 its values are computed but it still must be a vector of the appropriate size.
 
@@ -4390,7 +4490,7 @@ void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x,
 
    - nobsxpred: same as nobsx but can be used to store number of terms in sums from the predictive.
 
-   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, prodx, nobsx, sumxpred, prodxpred, nobsxpred and ignore the argument x (actually only the sums sumx+sumxpred, prodx+prodxpred and nobs+nobsxpred are used). For usesumx==0 they're computed from the data x and sumx, prodx, nobsx, sumxpred, prodxpred, nobsxpred are ignored.
+   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, prodx, nobsx, sumxpred, prodxpred, nobsxpred and ignore the argument x (actually only the sums sumx+sumxpred, prodx+prodxpred and nobs+nobsxpred are used). For usesumx==0 they are computed from the data x and sumx, prodx, nobsx, sumxpred, prodxpred, nobsxpred are ignored.
 
    - gapprox: for gapprox==1 the normalization constant for the conjugate Gamma shape distributions is computed approximately
 
@@ -4450,9 +4550,15 @@ if ((*usesumx==0)) {                                               //if suff sta
 
 
 
+
+
 (*lhood)= 0;
 
 for (i=0; i<(*nsel); i++) {                                      //for each gene
+
+  //printf("Gene number= %d\n",i); //debug
+
+  //mybreak();  //debug
 
   lgene= 0;
 
@@ -4500,8 +4606,6 @@ for (i=0; i<(*nsel); i++) {                                      //for each gene
 
 free_ivector(colini,0,*npat);
 
-
-
 }
 
 
@@ -4524,9 +4628,9 @@ double pdfcond_pat_clus(int geneid, int patid, int clusid, double *alpha0, doubl
 
     lengtha= ngrouppat[patid];
 
-    pr= prodx[geneid];
-
     if (usexpred==0) {
+
+      pr= prodx[geneid];
 
       n= nobsx+colini[patid];
 
@@ -4537,6 +4641,8 @@ double pdfcond_pat_clus(int geneid, int patid, int clusid, double *alpha0, doubl
       rcur += kcgammaC(n,balpha,&b1,alpha0+clusid,&b2,s,&lengtha,&newton,&logscale);
 
     } else {
+
+      pr= prodx[geneid]+prodxpred[geneid];
 
       n= dvector(0,ngrouppat[patid]); s= dvector(0,ngrouppat[patid]);
 
@@ -4614,7 +4720,7 @@ void estep(double *probest, double *rhoest, double *lhood, int *justlhood, int *
 
    - logalpha0,lognu,logbalpha,lognualpha: as in pp_ggC, except that the parameters are in log-scale
 
-   - logitrho, logitprob: as in pp_ggC, except that it's in logit scale
+   - logitrho, logitprob: as in pp_ggC, except that it is in logit scale
 
 
 
@@ -4674,15 +4780,19 @@ void estep(double *probest, double *rhoest, double *lhood, int *justlhood, int *
 
 	//        if (__iglobal==38) printf("i=%d, j=%d \n",i,j); //debug
 
-	r[sel[i]][j][k]= exp(pdfcond_pat_clus_nopred(sel[i],j,k,alpha0,nu,balpha,nualpha,ngrouppat,colini,*ncolsumx,sumx,prodx,nobsx,equalcv))*prob[j]*rho[k];
+	r[sel[i]][j][k]= pdfcond_pat_clus_nopred(sel[i],j,k,alpha0,nu,balpha,nualpha,ngrouppat,colini,*ncolsumx,sumx,prodx,nobsx,equalcv) - *esteppars.c0;
 
-	lgene[i] += r[sel[i]][j][k] + 1.0E-30;  //avoid 0 likelihood by adding offset
+	r[sel[i]][j][k]= exp(r[sel[i]][j][k])*prob[j]*rho[k];
+
+	lgene[i] += r[sel[i]][j][k];  
 
       }
 
     }
 
-    (*lhood) += log(lgene[i]);
+    //(*lhood) += log(lgene[i]); //debug, use next line after debug
+
+    (*lhood) += log(lgene[i] + 1.0E-100); //avoid 0 likelihood by adding offset
 
   }
 
@@ -4701,6 +4811,10 @@ void estep(double *probest, double *rhoest, double *lhood, int *justlhood, int *
   if (*justlhood ==0) {
 
     //sum posterior probabilities of (pattern,cluster) across genes
+
+    for (j=0; j< *npat; j++) { probest[j]= 0; }
+
+    for (k=0; k< *nclust; k++) { rhoest[k]= 0; }
 
     sumprobest= sumrhoest= 0;
 
@@ -4852,7 +4966,7 @@ void lhoodnopat(double *probest, double *rhoest, double *lhood, int *justlhood, 
 
 double pdfcond_pat_clus_nopred(int geneid, int patid, int clusid, double *alpha0, double *nu, double *balpha, double *nualpha, int *ngrouppat, int *colini, int ncolsumx, double *sumx, double *prodx, double *nobsx, int *equalcv) {
 
-//Same as pdfcond_pat, but runs faster as it doesn't consider data from the predictive sumxpred, prodxpred and nobsxpred.
+//Same as pdfcond_pat, but runs faster as it does not consider data from the predictive sumxpred, prodxpred and nobsxpred.
 
   int l, newton= 2, logscale=1, lengtha;
 
@@ -4948,7 +5062,7 @@ void posmeans_ggC(double *posmeans, int *underpattern, int *K, int *nsel, int *s
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
   - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on.
 
@@ -5296,7 +5410,7 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
   - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on.
 
@@ -5362,7 +5476,7 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
       }
 
-      if (found==0) { di= (*npat) - 1; }                   //note: di=last pattern if it hasn't been assigned to another pattern yet
+      if (found==0) { di= (*npat) - 1; }                   //note: di=last pattern if it has not been assigned to another pattern yet
 
 
 
@@ -5482,7 +5596,7 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on. If usesumx==0 its values are computed but it still must be a vector of the appropriate size.
 
@@ -5502,17 +5616,17 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
    - sumci: vector of length *nclust indicating the number of genes falling into each hyper-param cluster
 
-   - sumalpha: sum of distinct alpha's (needed to draw from conditional posterior of hyper-parameters)
+   - sumalpha: sum of distinct alpha values (needed to draw from conditional posterior of hyper-parameters)
 
    - sumlogalpha: sum of distinct log(alpha)
 
    - suminvlambda: sum of 1/lambda
 
-   - sumlambda: sum of distinct l's
+   - sumlambda: sum of distinct l values
 
-   - sumloglambda: sum of distinct log l's
+   - sumloglambda: sum of distinct log l values
 
-*/
+*/ 
 
 
 
@@ -5572,7 +5686,7 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
     }
 
-    if (found==0) { di= (*npat) - 1; }                   //note: d[i]=last pattern if it hasn't been assigned to another pattern yet
+    if (found==0) { di= (*npat) - 1; }                   //note: d[i]=last pattern if it has not been assigned to another pattern yet
 
     sumd[di] += 1;
 
@@ -5684,6 +5798,198 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
 
 
+
+
+
+
+void simprior_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int *deltat, int *groups, int *K, int *nrow, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *prob, int *npat, int *patterns, int *ngrouppat) {
+
+/* Draws parameter values from the prior and *deltat observations for *K groups from the prior predictive distribution of a GaGa model, conditional on hyper-parameter values
+
+   Input arguments: as in simpred_ggC
+
+
+
+   Output arguments
+
+   - xpred: matrix of *nrow rows and K*deltat colums with obs drawn from the predictive (cols in group order).
+
+   - d: if usel==0 returns indicators for expression pattern drawn from the prior distribution (in the two-group case typically d[i]==0 indicates equal expression and d[i]==1 differential expression). If usel==1 the provided d is used to generate xpred.
+
+   - alpha: if usel==0 returns matrix of *nrow rows, *K columns with alpha draws from the prior conditional on d. Column i corresponds to group i. If usel==1 the provided alpha is used to generate xpred. If equalcv==1 a vector of *nrow rows is returned instead of a matrix.
+
+   - l: if usel==0 returns matrix of *nrow rows, *K columns with lambda drawn from the prior conditional on d, alpha. Column i corresponds to group i. If usel==1 the provided l is used to generate xpred.
+
+*/
+
+
+
+  int i, j, m, found, group, di, ci, ncolpred;
+
+  double u, rsum, vcum, *lambda, *a;
+
+
+
+  ncolpred= (*K)*(*deltat);                                                              //number of columns of xpred
+
+
+
+  //Draw parameter values from the prior
+
+  if ((*usel==0)) {
+
+
+
+    for (i=0; i<(*nrow); i++) {
+
+      //draw expression pattern 
+
+      d[i]= 0; j=0; found=0; vcum= 0;                                              
+
+      u= ranf();
+
+      while ((found==0) && (j<(*npat-1))) {
+
+        vcum += prob[j];
+
+        if (u<=vcum) { found= 1; d[i]= j; }                  
+
+        j++;
+
+      }
+
+      if (found==0) { d[i]= (*npat) - 1; }                   //note: d[i]=last pattern if it has not been assigned to another pattern yet
+
+      di= d[i];
+
+
+
+      // draw cluster indicator
+
+      if (*nclust>1) {
+
+        j=0; rsum=0; found=0;
+
+        u= ranf();
+
+        while ((found==0) && (j<(*nclust-1))) {
+
+          rsum += rho[j];
+
+          if (u<=rsum) { found= 1; ci=j; }
+
+	  j++;
+
+	}
+
+	if (found==0) { ci= *nclust -1; }
+
+      } else {
+
+	ci= 0;
+
+      }
+
+
+
+      // draw alpha and l for each group
+
+      if (*equalcv == 1) {
+
+        lambda= dvector(0, ngrouppat[di]);
+
+        alpha[i]= rgammaC(balpha[0],balpha[0]/nualpha[0]);
+
+        for (j=0; j<ngrouppat[di]; j++) { 
+
+          lambda[j]= 1.0/rgammaC(alpha0[ci],alpha0[ci]/nu[ci]);
+
+	}
+
+	for (j=0; j<(*K); j++) {
+
+	  group= patterns[di * (*K) + j];
+
+	  l[i*(*K)+j] = lambda[group];
+
+	}
+
+	free_dvector(lambda, 0, ngrouppat[di]);
+
+      } else {
+
+        a= dvector(0, ngrouppat[di]); lambda= dvector(0, ngrouppat[di]);
+
+        for (j=0; j<ngrouppat[di]; j++) {
+
+          a[j]= rgammaC(balpha[0],balpha[0]/nualpha[0]);
+
+          lambda[j]= 1.0/rgammaC(alpha0[ci],alpha0[ci]/nu[ci]);
+
+	}
+
+	for (j=0; j<(*K); j++) {
+
+	  group= patterns[di * (*K) + j];
+
+	  alpha[i*(*K)+j] = a[group];
+
+	  l[i*(*K)+j] = lambda[group];
+
+	}
+
+	free_dvector(a, 0, ngrouppat[di]); free_dvector(lambda, 0, ngrouppat[di]);
+
+      }
+
+    }  //End i for
+
+  }  //End draw parameter values from the posterior
+
+
+
+  //Draw observations from the predictive
+
+  if (*equalcv == 1) {
+
+    for (i=0; i<(*nrow); i++) {
+
+      for (j=0, m=0; j<((*deltat)*(*K)); j++) {
+
+	xpred[i*ncolpred+j]= gengam(alpha[i]/l[i*(*K)+m],alpha[i]);
+
+	if (((j+1)%(*deltat)) == 0) m++;
+
+      }
+
+    }
+
+  } else {
+
+    for (i=0; i<(*nrow); i++) {
+
+      for (j=0, m=0; j<((*deltat)*(*K)); j++) {
+
+	xpred[i*ncolpred+j]= gengam(alpha[i*(*K)+m]/l[i*(*K)+m],alpha[i*(*K)+m]);
+
+	if (((j+1)%(*deltat)) == 0) m++;
+
+      }
+
+    }
+
+  }
+
+
+
+}
+
+
+
+
+
+
+
 void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int *deltat, int *groups, int *K, int *nsel, int *sel, int *nrow, int *ncol, double *x, double *alpha0, double *nu, double *balpha, double *nualpha, int *equalcv, int *nclust, double *rho, double *v, int *npat, int *patterns, int *ngrouppat, double *sumx, double *prodx, double *nobsx, int *usesumx, int *gapprox) {
 
 /* Draws parameter values from the posterior and *deltat observations for *K groups from the predictive distribution of a Gamma/Gamma model, conditional on hyper-parameter values
@@ -5720,7 +6026,7 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
    - patterns: matrix indicating which groups are put together under each pattern (*npat rows, K cols).
 
-   - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+   - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
    - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on. If usesumx==0 its values are computed but it still must be a vector of the appropriate size.
 
@@ -5728,7 +6034,7 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
    - nobsx: vector with number of terms in the sum. The first ngrouppat[0] elements correspond to pattern 0 and so on.
 
-   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they're computed from the data x.
+   - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they are computed from the data x.
 
    - gapprox: for gapprox==0 Gamma with matching mean & var is used, for gapprox==1 a faster version is used
 
@@ -5796,7 +6102,7 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
       }
 
-      if (found==0) { d[sel[i]]= (*npat) - 1; }                   //note: d[sel[i]]=last pattern if it hasn't been assigned to another pattern yet
+      if (found==0) { d[sel[i]]= (*npat) - 1; }                   //note: d[sel[i]]=last pattern if it has not been assigned to another pattern yet
 
       di= d[sel[i]];
 
@@ -5840,11 +6146,15 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
 	rcgammaC(a,&one,nobsx+colini[di],balpha,&b1,alpha0+ci,&b2,sumx+sel[i]*ncolsumx+colini[di],&lengtha,&newton);
 
-        alpha[sel[i]*(*K)] = a[0];
+        alpha[sel[i]] = a[0];
 
         for (j=0; j<ngrouppat[di]; j++) { 
 
-          lambda[j]= 1.0/gengam(alpha0[ci]/nu[ci] + a[0]*sumx[sel[i]*ncolsumx+colini[di]+j], alpha0[ci] + a[0]*nobsx[colini[di]+j]);
+          lambda[j]= 1.0/gengam(alpha0[ci]/nu[ci] + a[0]*sumx[sel[i]*ncolsumx+colini[di]+j], alpha0[ci]+a[0]*nobsx[colini[di]+j]);
+
+	}
+
+	for (j=0; j<(*K); j++) {
 
 	  group= patterns[di * (*K) + j];
 
@@ -5898,19 +6208,35 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
   //Draw observations from the predictive
 
-  for (i=0; i<(*nsel); i++) {
+  if (*equalcv == 1) {
 
-    m=0;
+    for (i=0; i<(*nsel); i++) {
 
-    for (j=0; j<((*deltat)*(*K)); j++) {
+      for (j=0, m=0; j<((*deltat)*(*K)); j++) {
 
-      xpred[sel[i]*ncolpred+j]= gengam(alpha[sel[i]*(*K)+m]/l[sel[i]*(*K)+m],alpha[sel[i]*(*K)+m]);
+	xpred[sel[i]*ncolpred+j]= gengam(alpha[sel[i]]/l[sel[i]*(*K)+m],alpha[sel[i]]);
 
-      if (((j+1)%(*deltat)) == 0) m++;
+	if (((j+1)%(*deltat)) == 0) m++;
+
+      }
 
     }
 
-  }  //End i for
+  } else {
+
+    for (i=0; i<(*nsel); i++) {
+
+      for (j=0, m=0; j<((*deltat)*(*K)); j++) {
+
+	xpred[sel[i]*ncolpred+j]= gengam(alpha[sel[i]*(*K)+m]/l[sel[i]*(*K)+m],alpha[sel[i]*(*K)+m]);
+
+	if (((j+1)%(*deltat)) == 0) m++;
+
+      }
+
+    }
+
+  }
 
 
 
@@ -5919,6 +6245,8 @@ void simpred_ggC(double *xpred, int *d, double *alpha, double *l, int *usel, int
 
 
 }
+
+
 
 
 
@@ -5958,13 +6286,13 @@ void simpred_oldggC(double *xpred, int *d, double *l, int *usel, int *deltat, in
 
    - ngrouppat: vector of length *npat indicating the number of groups with different expression levels for each pattern
 
-                (it can actually be computed from the patterns argument but it's more efficient to pre-compute and pass it as an argument)
+                (it can actually be computed from the patterns argument but it is more efficient to pre-compute and pass it as an argument)
 
   - sumx: sums of columns of x for each gene and each group in each expression pattern. The first ngrouppat[0] columns correspond to pattern 0, the next ngrouppat[1] to pattern 1 and so on. If usesumx==0 its values are computed but it still must be a vector of the appropriate size.
 
   - nobsx: vector with number of terms in the sum. The first ngrouppat[0] elements correspond to pattern 0 and so on.
 
-  - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they're computed from the data x.
+  - usesumx: usesumx==1 indicates to use the sufficient statistics stored in sumx, nobsx. For usesumx==0 they are computed from the data x.
 
 
 
@@ -6032,7 +6360,7 @@ void simpred_oldggC(double *xpred, int *d, double *l, int *usel, int *deltat, in
 
       }
 
-      if (found==0) { d[i]= (*npat) - 1; }                   //note: d[i]=last pattern if it hasn't been assigned to another pattern yet
+      if (found==0) { d[i]= (*npat) - 1; }                   //note: d[i]=last pattern if it has not been assigned to another pattern yet
 
       di= d[i];
 
@@ -6288,7 +6616,7 @@ void gapprox_par(double *aest, double *best, double *a, double *b, double *c, do
 
 
 
-//Gamma approx based on Stiling's formula
+//Gamma approx based on Stiling formula
 
 if (*lengtha == 1) {
 
@@ -6378,7 +6706,7 @@ for (i=0, step=1, fpp=-1; (i< *newton) && (*aest>1) && (fabs(step)>.01) && (fpp<
 
 
 
-//Gamma approx based on Stiling's formula
+//Gamma approx based on Stiling formula
 
 if (*lengtha == 1) {
 
