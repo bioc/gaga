@@ -1,11 +1,11 @@
 Package: gaga
-Version: 1.2.0
-Date: 2011-05-09
+Version: 1.99.0
+Date: 2011-05-30
 Title: GaGa hierarchical model for high-throughput data analysis
 Author: David Rossell <rosselldavid@gmail.com>.
 Maintainer: David Rossell <rosselldavid@gmail.com>
 Depends: R (>= 2.8.0), Biobase, coda
-Description: This package fits Rossell's generalizations of the Gamma-Gamma hierarchical model for high-throughput data analysis, which substantially improve the quality of the fit at a low computational cost. The model can be used for differential expression analysis, supervised gene clustering, classification and sequential design of high-throughput experiments. 
+Description: This package fits Rossell's generalizations of the Gamma-Gamma hierarchical model for high-throughput data analysis, which substantially improve the quality of the fit at a low computational cost. The model can be used for differential expression analysis, supervised gene clustering, classification and sequential sample size calculation for high-throughput experiments. 
 License: GPL (>= 2)
 LazyLoad: no
 biocViews: OneChannel,MassSpectrometry,MultipleComparisons,DifferentialExpression,Classification
