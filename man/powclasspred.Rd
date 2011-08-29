@@ -64,8 +64,6 @@ data analysis. \url{http://rosselldavid.googlepages.com}. }
 \seealso{ \code{\link{classpred}}, \code{\link{fitGG}},
   \code{\link{parest}}. See \code{\link{powfindgenes}} for differential
   expression power calculations. }
-\examples{
-}
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
 \keyword{ htest }
