@@ -1,19 +1,20 @@
 \name{print.gagafit}
 \alias{print.gagafit}
+\alias{print.nnfit}
 %- Also NEED an '\alias' for EACH other topic documented here.
-\title{ Print an object of class gagafit }
+\title{ Print an object of class gagafit or nnfit }
 \description{
-  Prints an object of class \code{gagafit}, as returned by \code{fitGG}
-  or \code{parest}. Provides general information and hyper-parameter
+  Prints an object of class \code{gagafit} (as returned by \code{fitGG}
+  or \code{parest}) or class \code{nnfit}. Provides general information and hyper-parameter
   estimates, if available.
 }
 \usage{
 \method{print}{gagafit}(x,...)
+\method{print}{nnfit}(x,...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{x}{ Object of type \code{gagafit}, as returned by \code{fitGG}
-    or \code{parest}. }
+  \item{x}{ Object of type \code{gagafit} or \code{nnfit}. }
   \item{\dots}{Other arguments to be passed on to the generic print function.}
 }
 \details{
@@ -27,11 +28,8 @@
 Prints number of genes, hypotheses, details about the model fitting and
 hyper-parameter estimates (when available).
 }
-\references{ Rossell D. GaGa: a simple and 
-flexible hierarchical model for microarray
-data analysis. \url{http://rosselldavid.googlepages.com}. }
 \author{ David Rossell }
-\seealso{ \code{\link{fitGG}}, \code{\link{parest}} }
+\seealso{ \code{\link{fitGG}}, \code{\link{fitNN}}, \code{\link{parest}} }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
 \keyword{ print }

@@ -1,1 +1,1 @@
-getpar <- function(gg.fit) { UseMethod("getpar") }
+getpar <- function(fit) { UseMethod("getpar") }

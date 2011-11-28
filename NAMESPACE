@@ -10,6 +10,8 @@ export( checkfit,
 
         fitGG,
 
+        fitNN,
+
         forwsimDiffExpr,
 
         geneclus,
@@ -26,6 +28,10 @@ export( checkfit,
 
         simGG,
 
+        simLNN,
+
+        simNN,
+
         simnewsamples,
 
         powclasspred,
@@ -39,13 +45,18 @@ export( checkfit,
 S3method(checkfit,gagafit)
 S3method(classpred,gagafit)
 S3method(findgenes,gagafit)
+S3method(findgenes,nnfit)
 S3method(posmeansGG,gagafit)
 S3method(getpar,gagafit)
+S3method(getpar,nnfit)
 S3method(geneclus,gagafit)
 S3method(print,gagaclus)
 S3method(print,gagahyp)
 S3method(parest,gagafit)
 S3method(powclasspred,gagafit)
 S3method(print,gagafit)
+S3method(print,nnfit)
 S3method(simnewsamples,gagafit)
 
+S3method(getpar,nnfit)
+S3method(print,nnfit)

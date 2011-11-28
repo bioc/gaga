@@ -1,19 +1,23 @@
 \name{findgenes}
 \alias{findgenes}
 \alias{findgenes.gagafit}
-\title{ Find differentially expressed genes after GaGa fit. }
+\alias{findgenes.nnfit}
+\title{ Find differentially expressed genes after GaGa or Normal-Normal fit. }
 \description{
   Obtains a list of differentially expressed genes using the posterior
-  probabilities from a GaGa or MiGaGa fit. For \code{parametric==TRUE} the procedure
+  probabilities from a GaGa, MiGaGa or Normal-Normal fit. For \code{parametric==TRUE} the procedure
   controls the Bayesian FDR below \code{fdrmax}. For
-  \code{parametric==FALSE} it controls the estimated frequentist FDR.
+  \code{parametric==FALSE} it controls the estimated frequentist FDR
+  (only available for GaGa).
 }
 \usage{
-findgenes(gg.fit, x, groups, fdrmax=.05, parametric=TRUE, B=500)
+findgenes(fit, x, groups, fdrmax=.05, parametric=TRUE, B=500)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fitGG}). }
+  \item{fit}{Either GaGa/MiGaGa fit (object of class \code{gagafit}, as
+    returned by \code{fitGG}) or Normal-Normal fit (class \code{nnfit},
+    as returned by \code{fitNN}). }
   \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
     containing the gene expression measurements used to fit the model.}
   \item{groups}{If \code{x} is of type \code{ExpressionSet} or
@@ -23,12 +27,15 @@ findgenes(gg.fit, x, groups, fdrmax=.05, parametric=TRUE, B=500)
     vector indicating to which group each column in x
     corresponds to.}
   \item{fdrmax}{Upper bound on FDR.}.
-  \item{parametric}{Set to \code{TRUE} to use the Bayes rule. Set to
-    \code{FALSE} to estimate the frequentist FDR non-parametrically.}
+  \item{parametric}{Set to \code{TRUE} to control the posterior expected
+    FDR below \code{fdrmax}. Set to
+    \code{FALSE} to estimate the frequentist FDR non-parametrically
+    (only available when fit is of class \code{gagafit}).}
   \item{B}{Number of boostrap samples to estimate FDR non-parametrically (ignored if \code{parametric==TRUE})}
 }
 \details{
-  The Bayes rule to minimize expected FNR subject to FDR
+  The Bayes rule to minimize posterior expected FNR subject to posterior
+  expected FDR
   \code{<=fdrmax} declares differentially expressed all genes with
   posterior probability of being equally expressed below a certain
   threshold. The value of the threshold is computed exactly for
@@ -49,11 +56,17 @@ to.}
   genes}
   \item{threshold}{Optimal threshold for posterior probability of equal expression (genes with probability < \code{threshold} are declared DE)}
 }
-\references{ Rossell D. GaGa: a simple and 
-flexible hierarchical model for microarray
-data analysis. \url{http://rosselldavid.googlepages.com}. }
+\references{
+Rossell D. (2009) GaGa: a Parsimonious and Flexible Model for Differential Expression Analysis. Annals of Applied Statistics, 3, 1035-1051.
+
+Yuan, M. and Kendziorski, C. (2006). A unified approach for simultaneous
+gene clustering and differential expression identification.  Biometrics 62(4): 1089-1098.
+
+Muller P, Parmigiani G, Robert C, Rousseau J. (2004) Journal of the American
+Statistical Association, 99(468): 990-1001.
+}
 \author{ David Rossell }
-\seealso{ \code{\link{fitGG}}, \code{\link{parest}} }
+\seealso{ \code{\link{fitGG}}, \code{\link{fitNN}}, \code{\link{parest}} }
 \examples{
 #Not run. Example from the help manual
 #library(gaga)

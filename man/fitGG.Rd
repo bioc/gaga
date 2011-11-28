@@ -1,18 +1,29 @@
 \name{fitGG}
 \alias{fitGG}
+\alias{fitNN}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Fit GaGa hierarchical model }
 \description{
- Fits GaGa or MiGaGa hierarchical models, either via a fully Bayesian
+ fitGG fits GaGa/MiGaGa hierarchical models, either via a fully Bayesian
  approach or via maximum likelihood.
+
+ fitNN fits a normal-normal hierarchical model (wrapper to
+ call emfit in package EBarrays with the LNNMV model).
 }
 \usage{
-fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "quickEM", B, priorpar, parini, trace = TRUE)
+fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method =
+ "quickEM", B, priorpar, parini, trace = TRUE)
+
+fitNN(x, groups, patterns, trace=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
-    containing the gene expression measurements used to fit the model.}
+    containing the gene expression measurements used to fit the
+    model. For \code{fitNN}, \code{x} should be in log-scale (in
+    contrast to the input to \code{emfit}). \code{fitGG} accepts raw and
+    log-scale (as long as all log-measurements remain positive). By
+    default we recommend using log-scale to reduce the influence of outliers. }
   \item{groups}{If \code{x} is of type \code{ExpressionSet} or
     \code{exprSet}, \code{groups} should be the name of the column
     in \code{pData(x)} with the groups that one wishes to compare. If
@@ -56,7 +67,7 @@ fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "quickEM", B, pr
   routine is printed.}
 }
 \details{
-  An approximation is used to sample faster from the
+  For GaGa/MiGaGa models, an approximation is used to sample faster from the
   posterior distribution of the gamma shape parameters and to compute
   the normalization constants (needed to evaluate the likelihood). These
   approximations are implemented in \code{rcgamma} and \code{mcgamma}.
@@ -70,16 +81,22 @@ fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method = "quickEM", B, pr
   the GaGa model inference has been seen to be robust to moderate
   changes in the hyper-parameter estimates in most datasets.
 }
-\value{ An object of class \code{gagafit}, with components
+\value{ \code{fitGG} returns an object of class \code{gagafit}, with components
   \item{parest }{Hyper-parameter estimates. Only returned if \code{method=='EBayes'}, for \code{method=='Bayes'} one must call the function \code{parest} after \code{fitGG}}
   \item{mcmc }{Object of class \code{mcmc} with posterior draws for hyper-parameters. Only returned if \code{method=='Bayes'}.}
   \item{lhood}{For \code{method=='Bayes'} it is the log-likelihood evaluated at each MCMC iteration. For \code{method=='EBayes'} it is the log-likelihood evaluated at the maximum.}
   \item{nclust}{Same as input argument.}
-  \item{patterns}{Same as input argument, converted to object of class \code{gagahyp}.}
+  \item{patterns}{Same as input argument, converted to object of class
+    \code{gagahyp}.}
+
+  \code{fitNN} returns an analogous object of class \code{nnfit}.
 }
-\references{ Rossell D. GaGa: a simple and 
-flexible hierarchical model for microarray
-data analysis. \url{http://rosselldavid.googlepages.com}. }
+\references{
+Rossell D. (2009) GaGa: a Parsimonious and Flexible Model for Differential Expression Analysis. Annals of Applied Statistics, 3, 1035-1051.
+
+Yuan, M. and Kendziorski, C. (2006). A unified approach for simultaneous
+gene clustering and differential expression identification.  Biometrics 62(4): 1089-1098.
+}
 \author{ David Rossell }
 \seealso{ \code{\link{parest}} to estimate hyper-parameters and compute
   posterior probabilities after a GaGa or MiGaGa

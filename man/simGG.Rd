@@ -1,14 +1,23 @@
 \name{simGG}
 \alias{simGG}
+\alias{simNN}
+\alias{simLNN}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Prior predictive simulation }
 \description{
-  Simulates parameters and data from the prior-predictive of GaGa or
-  MiGaGa model with several groups, fixing the hyper-parameters.
+  simGG simulates parameters and data from the prior-predictive of GaGa/
+  MiGaGa models with several groups, fixing the hyper-parameters.
+
+  simLNN simulates from a log-normal normal with gene-specific variances
+  (LNNMV in package EBarrays). simNN returns the log observations.
 }
 \usage{
 simGG(n, m, p.de=.1, a0, nu, balpha, nualpha, equalcv = TRUE, probclus
 = 1, a = NA, l = NA, useal = FALSE)
+
+simLNN(n, m, p.de=0.1, mu0, tau0, v0, sigma0)
+
+simNN(n, m, p.de=0.1, mu0, tau0, v0, sigma0)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -29,7 +38,9 @@ simGG(n, m, p.de=.1, a0, nu, balpha, nualpha, equalcv = TRUE, probclus
   not generated, only the data is generated. \code{a} is a matrix with the shape parameters
   of each gene and group and \code{l} is a matrix with the mean expressions. }
   \item{useal}{ For \code{useal==TRUE} the parameter values specified in
-  \code{a} and \code{l} are used, instead of being generated.}
+    \code{a} and \code{l} are used, instead of being generated.}
+  \item{mu0,tau0}{Gene-specific means arise from N(mu0,tau0^2) }
+  \item{v0, sigma0}{Gene-specific variances arise from IG(.5*nu0,.5*nu0*sigma0^2) }
 }
 \value{
   Object of class 'ExpressionSet'. Expression values can be accessed via
@@ -37,13 +48,16 @@ simGG(n, m, p.de=.1, a0, nu, balpha, nualpha, equalcv = TRUE, probclus
   expression values can be accessed via \code{fData(object)}.
 }
 \details{
-  The shape parameters are actually drawn from a gamma approximation to
+  For the GaGa model, the shape parameters are actually drawn from a gamma approximation to
   their posterior distribution. The function \code{rcgamma} implements
   this approximation.
 }
-\references{ Rossell D. GaGa: a simple and 
-flexible hierarchical model for microarray
-data analysis. \url{http://rosselldavid.googlepages.com}. }
+\references{
+Rossell D. (2009) GaGa: a Parsimonious and Flexible Model for Differential Expression Analysis. Annals of Applied Statistics, 3, 1035-1051.
+
+Yuan, M. and Kendziorski, C. (2006). A unified approach for simultaneous
+gene clustering and differential expression identification.  Biometrics 62(4): 1089-1098.
+}
 \author{ David Rossell }
 \note{ Currently, the routine only implements prior predictive
   simulation for the 2 hypothesis case.

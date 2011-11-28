@@ -12,12 +12,12 @@
   that will be used to determine when to stop the experiment.
 }
 \usage{
-forwsimDiffExpr(gg.fit, x, groups, ngenes, maxBatch, batchSize, fdrmax = 0.05, genelimit, v0thre = 1, B = 100,
+forwsimDiffExpr(fit, x, groups, ngenes, maxBatch, batchSize, fdrmax = 0.05, genelimit, v0thre = 1, B = 100,
 Bsummary = 100, trace = TRUE, randomSeed)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fitGG}). }
+  \item{fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fitGG}). }
   \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
     containing the gene expression measurements used to fit the model.}
   \item{groups}{If \code{x} is of type \code{ExpressionSet} or
