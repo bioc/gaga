@@ -9,7 +9,7 @@ if (is(x, "exprSet") | is(x, "ExpressionSet")) {
 if (ncol(x) != length(groups)) stop('The length of argument groups does not match with the number of columns in x')
 if ((type!='data') && (type!='shape') && (type!='mean') && (type!='shapemean')) stop('The argument type is not valid')
 
-xpred <- simnewsamples(gg.fit=gg.fit,groupsnew=groups,x=x,groups=groups)
+xpred <- simnewsamples(gg.fit,groupsnew=groups,x=x,groups=groups)
 if (type=='data') {
   if (logexpr) {
     xnewpdf <- density(log2(unlist(exprs(xpred)))); if (is.list(x)) xpdf <- density(log2(unlist(x))) else xpdf <- density(log2(x))

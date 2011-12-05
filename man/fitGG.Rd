@@ -14,7 +14,7 @@
 fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method =
  "quickEM", B, priorpar, parini, trace = TRUE)
 
-fitNN(x, groups, patterns, trace=TRUE)
+fitNN(x, groups, patterns, B, trace=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -89,7 +89,8 @@ fitNN(x, groups, patterns, trace=TRUE)
   \item{patterns}{Same as input argument, converted to object of class
     \code{gagahyp}.}
 
-  \code{fitNN} returns an analogous object of class \code{nnfit}.
+  \code{fitNN} returns an analogous object of class \code{nnfit}. The
+  component \code{nn.fit} is the object returned by \code{emfit}.
 }
 \references{
 Rossell D. (2009) GaGa: a Parsimonious and Flexible Model for Differential Expression Analysis. Annals of Applied Statistics, 3, 1035-1051.

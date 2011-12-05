@@ -1,5 +1,7 @@
 \name{forwsimDiffExpr}
 \alias{forwsimDiffExpr}
+\alias{forwsimDiffExpr.gagafit}
+\alias{forwsimDiffExpr.nnfit}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Forward simulation for differential expression. }
 \description{
@@ -7,17 +9,19 @@
   sequential designs. Here the utility is the expected number of true
   discoveries minus a sampling cost.
   The routine simulates future data either from the prior predictive or
-  using a set of pilot data and a GaGa
+  using a set of pilot data and a GaGa or normal-normal
   model fit. At each future time point, it computes a summary statistic
   that will be used to determine when to stop the experiment.
 }
 \usage{
 forwsimDiffExpr(fit, x, groups, ngenes, maxBatch, batchSize, fdrmax = 0.05, genelimit, v0thre = 1, B = 100,
-Bsummary = 100, trace = TRUE, randomSeed)
+Bsummary = 100, trace = TRUE, randomSeed, mc.cores=1)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fitGG}). }
+  \item{fit}{Either GaGa or MiGaGa fit (object of type \code{gagafit},
+    as returned by \code{fitGG}) or Normal-Normal fit (type \code{nnfit}
+    returned by \code{fitNN}). }
   \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
     containing the gene expression measurements used to fit the model.}
   \item{groups}{If \code{x} is of type \code{ExpressionSet} or
@@ -47,6 +51,9 @@ Bsummary = 100, trace = TRUE, randomSeed)
   \item{trace}{For \code{trace==TRUE} iteration progress is displayed.}
   \item{randomSeed}{Integer value used to set random number generator
     seed. Defaults to \code{as.numeric(Sys.time())} modulus 10^6.}
+  \item{mc.cores}{ If \code{multicore} package is available,
+    \code{mc.cores} indicates the number of cores to use for parallel
+    computing. Currently only used when \code{fit} is of class \code{nnfit}.}
 }
 \details{
 To improve computational speed hyper-parameters are not re-estimated as
@@ -75,6 +82,7 @@ A \code{data.frame} with the following columns:
 }
 \author{ David Rossell. }
 \seealso{ \code{\link{fitGG}} for fitting a GaGa model,
+  \code{\link{fitNN}} for fitting a normal-normal model,
   \code{\link{seqBoundariesGrid}} for finding the optimal design based
   on the forwards simulation output.
 \code{\link{powfindgenes}} for fixed sample size calculations.}

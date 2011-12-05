@@ -5,14 +5,18 @@
 \description{
   \code{powfindgenes} evaluates the posterior expected number of true positives
   (e.g. true gene discoveries) if one were to obtain an additional batch
-  of data. It uses a gaga model fit based on a set of pilot data.
+  of data. It uses either a GaGa or a normal-normal model fit on a pilot
+  data set.
 }
 \usage{
-powfindgenes(gg.fit, x, groups, batchSize = 1, fdrmax = 0.05, genelimit, v0thre = 1, B = 1000)
+powfindgenes(fit, x, groups, batchSize = 1, fdrmax = 0.05, genelimit,
+v0thre = 1, B = 1000, mc.cores=1)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as returned by \code{fitGG}). }
+  \item{fit}{GaGa/MiGaGa or normal-normal model fit using pilot data
+    \code{x}. It must be an object either of type \code{gagafit} (see
+    \code{fitGG}) or \code{nnfit} (see \code{fitNN}).}
   \item{x}{\code{ExpressionSet}, \code{exprSet}, data frame or matrix
     containing the gene expression measurements used to fit the model.}
   \item{groups}{If \code{x} is of type \code{ExpressionSet} or
@@ -31,19 +35,27 @@ powfindgenes(gg.fit, x, groups, batchSize = 1, fdrmax = 0.05, genelimit, v0thre 
     expressed < \code{v0thre} will be simulated.  Setting this limit can significantly increase the
     computational speed.}
   \item{B}{ Number of simulations from the GaGa predictive distribution
-    to be used to estimate the posterior expected number of true positives. }
+    to be used to estimate the posterior expected number of true
+    positives. }
+  \item{mc.cores}{ If \code{multicore} package is available,
+    \code{mc.cores} indicates the number of cores to use for parallel
+    computing. Currently only used when \code{fit} is of class \code{nnfit}.}
 }
 \details{
   The routine simulates data from the posterior predictive distribution
-  of a GaGa model. That is, first it simulates parameter values (differential
+  of a GaGa or normal-normal model. That is, first it simulates parameter values (differential
   expression status, mean expression levels etc.) from the posterior
-  distribution. Then it simulates data using Gamma distributions and the
+  distribution. Then it simulates data using the
   parameter values drawn from the posterior.
   Finally the simulated data is used to determine the differential status
   of each gene, controlling the Bayesian FDR at the \code{fdrmax} level,
   as implemented in \code{findgenes}.
   As the differential expression status is known for each gene, one can
   evaluate the number of true discoveries in the reported gene list.
+
+  In order to improve speed, hyper-parameters are not re-estimated when
+  computing posterior probabilities for the posterior predictive
+  simulated data.
 }
 \value{
   \item{m}{Posterior expected number of true positives (as estimated by
@@ -53,7 +65,7 @@ powfindgenes(gg.fit, x, groups, batchSize = 1, fdrmax = 0.05, genelimit, v0thre 
 \references{ Rossell D. GaGa: a simple and flexible hierarchical model for microarray
 data analysis. \url{http://rosselldavid.googlepages.com}. }
 \author{ David Rossell }
-\seealso{ \code{\link{findgenes}}, \code{\link{fitGG}},
+\seealso{ \code{\link{findgenes}}, \code{\link{fitGG}}, \code{\link{fitNN}},
   \code{\link{parest}}. See \code{\link{powclasspred}} for
 power calculations for sample classification. }
 \examples{

@@ -155,7 +155,7 @@ n <- 100; m <- c(6,6)
 a0 <- 25.5; nu <- 0.109
 balpha <- 1.183; nualpha <- 1683
 probpat <- c(.95,.05)
-xsim <- simGG(n,m,p.de=probpat[2],a0,nu,balpha,nualpha,equalcv=TRUE)
+xsim <- simGG(n,m=m,p.de=probpat[2],a0,nu,balpha,nualpha,equalcv=TRUE)
 @ 
 
 

@@ -1,4 +1,91 @@
-forwsimDiffExpr <- function(fit,x,groups,ngenes,maxBatch,batchSize,fdrmax=.05,genelimit,v0thre=1,B=100,Bsummary=100,trace=TRUE,randomSeed) {
+forwsimDiffExpr <- function(fit,x,groups,ngenes,maxBatch,batchSize,fdrmax=.05,genelimit,v0thre=1,B=100,Bsummary=100,trace=TRUE,randomSeed,mc.cores=1) { UseMethod("forwsimDiffExpr") }
+
+updateNNfit <- function(fit,xnew,probpat) {
+  #Update nnfit object, keeping hyper-parameters kept fixed (i.e. only update post prob and hypotheses)
+  nn.fitnew <- fit$nn.fit 
+  #groupsr <- gaga:::groups2int(xnew$group, fit$patterns) + 1
+  nn.fitnew@hypotheses <- makeEBarraysHyp(patterns=fit$patterns, groups=xnew$group)
+  ppnew <- postprob(fit=nn.fitnew, data=exp(exprs(xnew)), groupid=xnew$group)$pattern
+  ppnew <- t(t(ppnew)/probpat)
+  ppall <- fit$pp*ppnew; ppall <- ppall/rowSums(ppall)
+  fitall <- list(parest=fit$parest, patterns=fit$patterns, pp=ppall, nn.fit=nn.fitnew)
+  class(fitall) <- 'nnfit'
+  return(fitall)
+}
+
+forwsimDiffExpr.nnfit <- function(fit,x,groups,ngenes,maxBatch,batchSize,fdrmax=.05,genelimit,v0thre=1,B=100,Bsummary=100,trace=TRUE,randomSeed, mc.cores=1) {
+
+if (missing(batchSize)) stop('batchSize must be specified')
+batchSize <- as.integer(batchSize)
+if (missing(maxBatch)) stop('maxBatch must be specified')
+if (round(maxBatch)!=maxBatch | maxBatch<1) stop('maxBatch must be an integer >=1')
+if (round(B)!=B | B<1) stop('B must be an integer >=1')
+if (missing(x)) {
+  if (nrow(fit$patterns)>2) stop('More than two expression patterns not currently implemented when simulating from prior predictive')
+  if (missing(ngenes)) stop('ngenes must be specified when x is missing')
+} else {
+  if (is(x, "exprSet") | is(x,"ExpressionSet")) {
+  if (is.character(groups) && length(groups)==1) { groups <- as.character(pData(x)[, groups]) }
+  x <- exprs(x)
+  } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") } 
+  #Reduce nb of genes to use in forward sim
+  if (!missing(genelimit)) { if (genelimit < nrow(x)) v0thre <- quantile(fit$pp[,1],probs=genelimit/nrow(x)) }
+  sel <- fit$pp[,1] < v0thre; x <- x[sel,]; fit$pp <- fit$pp[sel,]
+}
+
+#Initialize
+if (trace) { cat(' Initializing...') }
+nans <- B*(maxBatch+1)
+ans <- data.frame(simid=rep(1:B,each=maxBatch+1),time=rep(0:maxBatch,B),u=double(nans),fdr=double(nans),fnr=double(nans),power=double(nans),summary=rep(NA,nans))
+sel <- ans$time==0
+if (missing(x)) {
+  ans$u[sel] <- ans$power[sel] <- 0; ans$fdr[sel] <- ans$fnr[sel] <- 0
+  ans$summary[sel] <- powsimprior(fit,m=rep(batchSize,ncol(fit$patterns)),ngenes=ngenes,fdrmax=fdrmax,B=Bsummary,mc.cores=mc.cores)$m
+} else {
+  d <- findgenes(fit,fdrmax=fdrmax)
+  ans$u[sel] <- d$truePos; ans$power[sel] <- d$power; ans$fdr[sel] <- d$fdrpar; ans$fnr[sel] <- d$fnr
+  ans$summary[sel] <- powfindgenes(fit,x=x,groups=groups,batchSize=batchSize,fdrmax=fdrmax,B=Bsummary,mc.cores=mc.cores)$m - d$truePos
+}
+
+#Forward simulation
+est <- getpar(fit); probpat <- est[grep('probpat',names(est))]
+ngroups <- ncol(fit$patterns)
+groupinit <- seq(1,batchSize*maxBatch*ngroups,by=maxBatch*ngroups)
+if (trace) { B10 <- round(B/10); cat('\n Forward simulation') }
+for (i in 1:B) {
+  #Simulate data up to time horizon
+  if (missing(x)) {
+    m <- rep(batchSize*maxBatch,ncol(fit$patterns))
+    xnew <- simNN(n=ngenes, m=m, p.de=est['probpat2'],mu0=est['mu0'],tau0=est['tau0'],v0=est['v0'],sigma0=est['sigma0'])
+    groupsnew <- xnew$group; xnew <- exprs(xnew)
+  } else {
+    groupsnew <- rep(colnames(fit$patterns),each=batchSize*maxBatch)
+    xnew <- simnewsamples(fit, groupsnew=groupsnew, x=x, groups=groups)
+  }
+  #Update post prob & post expected terminal utility
+  fitnew <- fit
+  for (t in 1:maxBatch) {
+    colnew <- do.call(c,lapply(groupinit, function(z) z + ((t-1)*batchSize):(t*batchSize-1)))
+    colcum <- do.call(c,lapply(groupinit, function(z) z + 0:(t*batchSize-1)))
+    fitnew <- updateNNfit(fitnew,xnew=xnew[,colnew],probpat=probpat)  #update iteratively
+    groupscum <- c(groups,groupsnew[colcum])
+    fitnew$nn.fit@hypotheses <- makeEBarraysHyp(patterns=fitnew$patterns, groups=groupscum)
+    d <- findgenes(fitnew,fdrmax=fdrmax,parametric=TRUE)
+    rowsel <- (i-1)*(maxBatch+1)+ t+1
+    ans$u[rowsel] <- d$truePos; ans$power[rowsel] <- d$power; ans$fdr[rowsel] <- d$fdrpar; ans$fnr[rowsel] <- d$fnr
+    #Summary statistic
+    if (t<maxBatch) {
+      ans$summary[rowsel] <- powfindgenes(fitnew, x=cbind(x,exprs(xnew)[,colcum]), groups=groupscum, batchSize=batchSize,fdrmax=fdrmax,B=Bsummary,mc.cores=mc.cores)$m - ans$u[rowsel]
+    }
+  }
+  if (trace & (i %% B10)==0) cat('.')
+}
+if (trace) cat('\n')
+return(ans)
+}
+
+
+forwsimDiffExpr.gagafit <- function(fit,x,groups,ngenes,maxBatch,batchSize,fdrmax=.05,genelimit,v0thre=1,B=100,Bsummary=100,trace=TRUE,randomSeed,mc.cores=1) {
 
 if (missing(batchSize)) stop('batchSize must be specified')
 batchSize <- as.integer(batchSize)

@@ -1,3 +1,7 @@
+CHANGES IN VERSION 2.1.0
+- Added wrapper for normal-normal model fit
+- Added posterior predictive simulation, power calculations and forward simulation for normal-normal model.
+
 CHANGES IN VERSION 1.2.0
 - forwsimDiffExpr is now fully operational. Vignette updated with examples.
 
