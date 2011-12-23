@@ -22,7 +22,7 @@ simNN <- function(n, m, p.de=0.1, mu0, tau0, v0, sigma0) {
   sigma <- sqrt(1/rgamma(n,.5*v0, .5*v0*sigma0^2))
   #Simulate observations
   x <- matrix(NA,nrow=n,ncol=sum(m))
-  stcol <- c(cumsum(m)-m[1]+1,sum(m)+1)
+  stcol <- c(1,1+cumsum(m))
   for (i in 1:length(m)) x[,stcol[i]:(stcol[i+1]-1)] <- rnorm(n*m[i],mu[,i],sd=sigma)
   #Format as ExpressionSet
   fdata <- data.frame(mu,sigma); names(fdata)[1:length(m)] <- paste('mu',1:length(m),sep='')

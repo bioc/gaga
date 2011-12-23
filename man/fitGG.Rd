@@ -1,6 +1,7 @@
 \name{fitGG}
 \alias{fitGG}
 \alias{fitNN}
+\alias{adjustfitNN}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Fit GaGa hierarchical model }
 \description{
@@ -9,12 +10,16 @@
 
  fitNN fits a normal-normal hierarchical model (wrapper to
  call emfit in package EBarrays with the LNNMV model).
+ 
+ adjustfitNN corrects a small sample-size bias in the fitNN estimation procedure.
 }
 \usage{
 fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method =
  "quickEM", B, priorpar, parini, trace = TRUE)
 
 fitNN(x, groups, patterns, B, trace=TRUE)
+
+adjustfitNN(fit, pitrue, mc.cores=1)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -64,7 +69,13 @@ fitNN(x, groups, patterns, B, trace=TRUE)
     indicating the starting values for the hyper-parameters. If not
     specified, a method of moments estimate is used.}
   \item{trace}{ For \code{trace==TRUE} the progress of the model fitting
-  routine is printed.}
+    routine is printed.}
+  \item{fit}{\code{nnfit} object, as returned by \code{fitNN}}
+  \item{pitrue}{Grid of true \code{pi} values for which to evaluate the
+    MoM estimation bias. See details.}
+  \item{mc.cores}{If package \code{multicore} is available,
+    \code{mc.cores} specifies the number of cores to be used for
+    parallel computing.}
 }
 \details{
   For GaGa/MiGaGa models, an approximation is used to sample faster from the
@@ -80,6 +91,18 @@ fitNN(x, groups, patterns, B, trace=TRUE)
   to those obtained via the slower \code{method=='EM'}. Additionally,
   the GaGa model inference has been seen to be robust to moderate
   changes in the hyper-parameter estimates in most datasets.
+
+  \code{fitNN} is a wrapper to \code{emfit} in package EBarrays with the LNNMV model.
+  This procedure estimates hyper-parameters using the method of moments
+  (MoM), which typically results in over-estimating the proportion of
+  differentially expressed genes, which we denote by pi1. 
+  \code{adjustfitNN} corrects this bias by repeatedly simulating from
+  the prior predictive of a normal-normal model. Simulations are
+  performed for a grid of pi1 values, so that the expected bias can be
+  evaluated for each of them. The bias is then modeled as a smooth
+  function of pi1 using function \code{gam} from package \code{mgcv}.
+  Finally, the value of pi1 is bias-adjusted and the posterior
+  probabilities are recomputed using the updated pi1 value.
 }
 \value{ \code{fitGG} returns an object of class \code{gagafit}, with components
   \item{parest }{Hyper-parameter estimates. Only returned if \code{method=='EBayes'}, for \code{method=='Bayes'} one must call the function \code{parest} after \code{fitGG}}

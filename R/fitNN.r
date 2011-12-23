@@ -15,24 +15,24 @@ fitNN <- function(x, groups, patterns, B=20, trace=TRUE) {
     patterns <- rbind(rep(0, K), 0:(K - 1))
     colnames(patterns) <- unique.default(groups)
   }
-  groupsr <- groups2int(groups, patterns) + 1
-  if (length(table(groupsr)) != ncol(patterns)) stop("patterns must have the same number of columns as the number of distinct groups")
+  #groupsr <- groups2int(groups, patterns) + 1
+  if (length(unique(groups)) != ncol(patterns)) stop("patterns must have the same number of columns as the number of distinct groups")
   if (ncol(patterns) != K) stop("patterns must have number of columns equal to the number of distinct elements in groups")
   if (sum(is.na(patterns)) > 0) stop("patterns cannot have any NA values")
   if (sum(is.nan(patterns)) > 0) stop("patterns cannot have any NaN values")
   if (sum(is.infinite(patterns)) > 0) stop("patterns cannot have any Inf values")
   for (i in 1:nrow(patterns)) { patterns[i, ] <- as.integer(as.integer(as.factor(patterns[i,])) - 1) }
   class(patterns) <- "gagahyp"
-  hypotheses <- makeEBarraysHyp(patterns=patterns, groups=groupsr)
+  hypotheses <- makeEBarraysHyp(patterns=patterns, groups=groups)
   #Fit model
   expx <- exp(x)
   verbose <- getOption("verbose")
   options(verbose=trace)
   family <- eb.createFamilyLNNMV()
-  nn.fit <- emfit(data=expx, family=family, hypotheses=hypotheses, groupid=groupsr, num.iter=B)
+  nn.fit <- emfit(data=expx, family=family, hypotheses=hypotheses, groupid=groups, num.iter=B)
   options(verbose=verbose)
-  priorest <- sigmaPriorEst(x=x,groupid=groupsr,model='NN')
-  pp <- postprob(fit=nn.fit, data=expx, groupid=groupsr)$pattern
+  priorest <- sigmaPriorEst(x=x,groupid=groups,model='NN')
+  pp <- postprob(fit=nn.fit, data=expx, groupid=groups)$pattern
   #Return output
   parest <- c(mu0=nn.fit@thetaEst[1,'theta1'],tau02=exp(nn.fit@thetaEst[1,'theta2']),priorest['v0'],priorest['sigma02'],probclus=1,probpat=nn.fit@probEst)
   ans <- list(parest=parest, patterns=patterns, pp=pp, nn.fit=nn.fit)
@@ -70,7 +70,48 @@ for (i in 1:nrow(patterns)) {
   for (j in unique(patterns[i,])) tmp[groups %in% colnames(patterns)[patterns[i,]==j]] <- j+1
   hypotheses[i] <- paste(tmp,collapse=' ')
 }
-#  ngroup <- table(groups)
-#  for (i in 1:length(hypotheses)) hypotheses[i] <- paste(rep(patterns[i,]+1,ngroup),collapse=' ')
   ebPatterns(hypotheses)
+}
+
+
+
+#routine to adjust bias
+adjustfitNN <- function(fit, pitrue, mc.cores=1) {
+  if (class(fit)!='nnfit') stop('fit should be of class nnfit')
+  if (ncol(fit$patterns)>2) stop('Only 2 patterns case is currently implemented')
+  f <- function(pitrue,pars,B=3) {
+    tau0 <- sqrt(pars['tau02'])
+    sigma0 <- sqrt(pars['sigma02'])
+    ans <- double(B)
+    for (i in 1:B) {
+      xsim <- simNN(n=nrow(x),m=c(3,2),p.de=pitrue,mu0=pars['mu0'],tau0=tau0,v0=pars['v0'],sigma0=sigma0)
+      fit <- fitNN(xsim,group=group,trace=FALSE)
+      ans[i] <- getpar(fit)['probpat2']
+    }
+    return(mean(ans))
+  }
+  #Obtain expected estimate for a series of true parameter values
+  probpatObs <- getpar(fit)['probpat2']
+  if (missing(pitrue)) { pitrue <- seq(probpatObs/3,probpatObs,length=10) }
+  if (mc.cores>1) {
+    if ('multicore' %in% loadedNamespaces()) {
+      probpatExpect <- mclapply(pitrue,f,pars=getpar(fit),B=3,mc.cores=mc.cores)
+    } else stop('multicore library has not been loaded!')
+  } else {
+    probpatExpect <- lapply(pitrue,f,pars=getpar(fit),B=3)
+  }
+  probpatExpect <- unlist(probpatExpect)
+  #True probpat as a smooth function of the estimated probpat
+  require(mgcv)
+  gam1 <- gam(pitrue ~ s(probpatExpect))
+  newdata <- data.frame(probpatExpect=seq(min(probpatExpect),max(probpatExpect),length=1000))
+  newdata$pitrue <- predict(gam1,newdata=newdata)
+  probpatAdj <- newdata$pitrue[which.min(abs(newdata$probpatExpect-probpatObs))]
+  #Return answer
+  probpat <- data.frame(truth=pitrue,expected=probpatExpect)
+  fit$pp <- t((t(fit$pp)/fit$parest[c('probpat1','probpat2')]) * c(1-probpatAdj,probpatAdj))
+  fit$pp <- fit$pp/rowSums(fit$pp)
+  fit$parest[c('probpat1','probpat2')] <- c(1-probpatAdj,probpatAdj)
+  ans <- list(fit=fit,probpat=probpat)
+  return(ans)
 }

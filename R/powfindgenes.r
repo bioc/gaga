@@ -7,18 +7,12 @@ if (is(x, "exprSet") | is(x,"ExpressionSet")) {
   if (is.character(groups) && length(groups)==1) { groups <- as.factor(pData(x)[, groups]) }
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") }
-groupsnew <- rep(unique(groups),each=batchSize)
+groupsnew <- rep(colnames(fit$patterns),each=batchSize)
 probpat <- getpar(fit); probpat <- probpat[grep('probpat',names(probpat))]
 #Function to simulate + post prob + post expected true positives
 f <- function(simid) {
   xnew <- simnewsamples(fit,groupsnew=groupsnew,x=x,groups=groups)
-  nn.fitnew <- fit$nn.fit #hyper-parameters kept fixed, so simply copy the model and update hypotheses to reflect new obs
-  groupsr <- gaga:::groups2int(xnew$group, fit$patterns) + 1
-  nn.fitnew@hypotheses <- makeEBarraysHyp(patterns=fit$patterns, groups=xnew$group)
-  ppnew <- postprob(fit=nn.fitnew, data=exp(exprs(xnew)), groupid=xnew$group)$pattern
-  ppnew <- t(t(ppnew)/probpat)
-  ppall <- fit$pp*ppnew; ppall <- ppall/rowSums(ppall)
-  fitall <- list(parest=fit$parest, patterns=fit$patterns, pp=ppall, nn.fit=fit$nn.fitnew)
+  fitall <- updateNNfit(fit,x=cbind(x,exprs(xnew)),groups=c(groups,groupsnew))
   class(fitall) <- 'nnfit'
   findgenes(fitall,fdrmax=fdrmax)$truePos
 }
