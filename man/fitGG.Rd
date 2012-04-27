@@ -19,7 +19,7 @@ fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method =
 
 fitNN(x, groups, patterns, B, trace=TRUE)
 
-adjustfitNN(fit, pitrue, mc.cores=1)
+adjustfitNN(fit, pitrue, B=5, nsim=3, mc.cores=1)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -54,7 +54,7 @@ adjustfitNN(fit, pitrue, mc.cores=1)
     algorithm, but this is currently only implemented for
     \code{nclust>1}. \code{method=='quickEM'} is a quicker
     implementation that only performs 2 optimization steps (see details).}
-  \item{B}{ Number of iterations. For \code{method=='MH'} and \code{method=='Gibbs'}, \code{B}
+  \item{B}{ Number of iterations to fit the model. For \code{method=='MH'} and \code{method=='Gibbs'}, \code{B}
     is the number of MCMC iterations (defaults to 1000). For
     \code{method=='SA'}, \code{B} is the number of iterations in the
     Simulated Annealing scheme (defaults to 200). For
@@ -73,6 +73,7 @@ adjustfitNN(fit, pitrue, mc.cores=1)
   \item{fit}{\code{nnfit} object, as returned by \code{fitNN}}
   \item{pitrue}{Grid of true \code{pi} values for which to evaluate the
     MoM estimation bias. See details.}
+  \item{nsim}{Number of datasets to simulate for each \code{pitrue} value}
   \item{mc.cores}{If package \code{multicore} is available,
     \code{mc.cores} specifies the number of cores to be used for
     parallel computing.}

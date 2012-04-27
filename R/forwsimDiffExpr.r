@@ -27,6 +27,7 @@ nans <- B*(maxBatch+1)
 ans <- data.frame(simid=rep(1:B,each=maxBatch+1),time=rep(0:maxBatch,B),u=double(nans),fdr=double(nans),fnr=double(nans),power=double(nans),summary=rep(NA,nans))
 sel <- ans$time==0
 est <- getpar(fit); probpat <- est[grep('probpat',names(est))]
+fit$nn.fit@probEst[1,] <- probpat #ensure that hyper-parameters are consistent
 if (missing(x)) {
   ans$u[sel] <- ans$power[sel] <- 0; ans$fdr[sel] <- ans$fnr[sel] <- 0
   ans$summary[sel] <- powsimprior(fit,m=rep(batchSize,ncol(fit$patterns)),ngenes=ngenes,fdrmax=fdrmax,B=Bsummary,mc.cores=mc.cores)$m
@@ -38,28 +39,32 @@ if (missing(x)) {
 
 #Forward simulation
 ngroups <- ncol(fit$patterns)
-groupinit <- seq(1,batchSize*maxBatch*ngroups,by=maxBatch*ngroups)
-if (trace) { B10 <- round(B/10); cat('\n Forward simulation') }
+groupinit <- seq(1,batchSize*maxBatch*ngroups,by=batchSize*maxBatch)
+if (trace) { B10 <- max(round(B/10),1); cat('\n Forward simulation') }
 for (i in 1:B) {
   #Simulate data up to time horizon
   if (missing(x)) {
     m <- rep(batchSize*maxBatch,ncol(fit$patterns))
     xnew <- simNN(n=ngenes, m=m, p.de=est['probpat2'],mu0=est['mu0'],tau0=sqrt(est['tau02']),v0=est['v0'],sigma0=sqrt(est['sigma02']))
     groupsnew <- xnew$group <- rep(colnames(fit$patterns),m)
+    dtrue <- fData(xnew)[,'mu1']!=fData(xnew)[,'mu2']
   } else {
     groupsnew <- rep(colnames(fit$patterns),each=batchSize*maxBatch)
     xnew <- simnewsamples(fit, groupsnew=groupsnew, x=x, groups=groups)
+    dtrue <- fData(xnew)$d==2
   }
   #Update post prob & post expected terminal utility
   for (t in 1:maxBatch) {
-    #colnew <- do.call(c,lapply(groupinit, function(z) z + ((t-1)*batchSize):(t*batchSize-1)))
     colcum <- do.call(c,lapply(groupinit, function(z) z + 0:(t*batchSize-1)))
     if (missing(x)) { xcum <- exprs(xnew)[,colcum] } else { xcum <- cbind(x,exprs(xnew)[,colcum]) }
     groupscum <- c(groups,groupsnew[colcum])
     fitnew <- updateNNfit(fit,x=xcum,groups=groupscum)
     d <- findgenes(fitnew,fdrmax=fdrmax,parametric=TRUE)
     rowsel <- (i-1)*(maxBatch+1)+ t+1
-    ans$u[rowsel] <- d$truePos; ans$power[rowsel] <- d$power; ans$fdr[rowsel] <- d$fdrpar; ans$fnr[rowsel] <- d$fnr
+    dcall <- d$d==1
+    if (any(dcall)) { ans$u[rowsel] <- sum(dtrue & dcall) } else { ans$u[rowsel] <- 0 }
+    #ans$u[rowsel] <- d$truePos
+    ans$power[rowsel] <- d$power; ans$fdr[rowsel] <- d$fdrpar; ans$fnr[rowsel] <- d$fnr
     #Summary statistic
     if (t<maxBatch) {
       ans$summary[rowsel] <- powfindgenes(fitnew, x=xcum,groups=groupscum,batchSize=batchSize,fdrmax=fdrmax,B=Bsummary,mc.cores=mc.cores)$m - ans$u[rowsel]

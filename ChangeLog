@@ -1,3 +1,6 @@
+CHANGES IN VERSION 3.2.1
+- Fixed bug in fitGG which stopped the execution when the levels of argument groups where not ordered.
+
 CHANGES IN VERSION 2.1.0
 - Added wrapper for normal-normal model fit
 - Added posterior predictive simulation, power calculations and forward simulation for normal-normal model.

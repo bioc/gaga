@@ -1,4 +1,5 @@
 buildPatterns <- function(groups) {
+  stopifnot(class(groups) %in% c('character','factor'))
   getPatterns <- function(x) {
     tmpList <- vector('list',length=nrow(x))
     for (i in 1:nrow(x)) {
@@ -14,6 +15,6 @@ buildPatterns <- function(groups) {
 #    cat(paste('Pattern',i,'\n'))
     ans <- getPatterns(ans)
   }
-  colnames(ans) <- as.character(unique(groups))
-  return(ans)
+  colnames(ans) <- unique.default(groups)[order(unique.default(groups))]
+ return(ans)
 }

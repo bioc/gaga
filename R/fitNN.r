@@ -76,16 +76,16 @@ for (i in 1:nrow(patterns)) {
 
 
 #routine to adjust bias
-adjustfitNN <- function(fit, pitrue, mc.cores=1) {
+adjustfitNN <- function(fit, pitrue, B=5, nsim=3, mc.cores=1) {
   if (class(fit)!='nnfit') stop('fit should be of class nnfit')
   if (ncol(fit$patterns)>2) stop('Only 2 patterns case is currently implemented')
-  f <- function(pitrue,pars,B=3) {
+  f <- function(pitrue,pars,nsim) {
     tau0 <- sqrt(pars['tau02'])
     sigma0 <- sqrt(pars['sigma02'])
-    ans <- double(B)
-    for (i in 1:B) {
-      xsim <- simNN(n=nrow(x),m=c(3,2),p.de=pitrue,mu0=pars['mu0'],tau0=tau0,v0=pars['v0'],sigma0=sigma0)
-      fit <- fitNN(xsim,group=group,trace=FALSE)
+    ans <- double(nsim)
+    for (i in 1:nsim) {
+      xsim <- simNN(n=nrow(fit$pp),m=c(3,2),p.de=pitrue,mu0=pars['mu0'],tau0=tau0,v0=pars['v0'],sigma0=sigma0)
+      fit <- fitNN(xsim,group='group',B=B,trace=FALSE)
       ans[i] <- getpar(fit)['probpat2']
     }
     return(mean(ans))
@@ -93,12 +93,13 @@ adjustfitNN <- function(fit, pitrue, mc.cores=1) {
   #Obtain expected estimate for a series of true parameter values
   probpatObs <- getpar(fit)['probpat2']
   if (missing(pitrue)) { pitrue <- seq(probpatObs/3,probpatObs,length=10) }
+  if (length(pitrue)<10) stop('pitrue must be at least length 10, in order to fit gam with maximum degrees of freedom')
   if (mc.cores>1) {
     if ('multicore' %in% loadedNamespaces()) {
-      probpatExpect <- mclapply(pitrue,f,pars=getpar(fit),B=3,mc.cores=mc.cores)
+      probpatExpect <- mclapply(pitrue,f,pars=getpar(fit),nsim=nsim,mc.cores=mc.cores)
     } else stop('multicore library has not been loaded!')
   } else {
-    probpatExpect <- lapply(pitrue,f,pars=getpar(fit),B=3)
+    probpatExpect <- lapply(pitrue,f,pars=getpar(fit),nsim=nsim)
   }
   probpatExpect <- unlist(probpatExpect)
   #True probpat as a smooth function of the estimated probpat

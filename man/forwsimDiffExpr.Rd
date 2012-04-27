@@ -81,7 +81,8 @@ A \code{data.frame} with the following columns:
    data analysis. Annals of Applied Statistics, 2009, 3, 1035-1051.
 }
 \author{ David Rossell. }
-\seealso{ \code{\link{fitGG}} for fitting a GaGa model,
+\seealso{ \code{\link{plotForwSim}} to plot the simulated trajectories,
+  \code{\link{fitGG}} for fitting a GaGa model,
   \code{\link{fitNN}} for fitting a normal-normal model,
   \code{\link{seqBoundariesGrid}} for finding the optimal design based
   on the forwards simulation output.
@@ -109,7 +110,7 @@ b0seq <- seq(0,20,length=200); b1seq <- seq(0,40,length=200)
 bopt <-seqBoundariesGrid(b0=b0seq,b1=b1seq,forwsim=fs1,samplingCost=samplingCost,powmin=0)
 bopt <- bopt$opt
 
-plot(fs1$time,fs1$u,xlab='Additional batches',ylab='E(newly discovered DE genes)')
+plot(fs1$time,fs1$summary,xlab='Additional batches',ylab='E(newly discovered DE genes)')
 abline(bopt['b0'],bopt['b1'])
 text(.2,bopt['b0'],'Continue',pos=3)
 text(.2,bopt['b0'],'Stop',pos=1)

@@ -14,6 +14,7 @@ if ((method=='quickEM') && (nrow(x)>10^4)) x <- x[sample(1:nrow(x),10^4),]  #lim
 
 K <- length(unique.default(groups))
 if (missing(patterns)) { patterns <- rbind(rep(0,K),0:(K-1)); colnames(patterns) <- unique.default(groups) }
+if (class(groups)=='factor') groups <- factor(as.character(groups)) #reorder levels
 groupsr <- groups2int(groups,patterns)
 
 if (length(table(groupsr))!=ncol(patterns)) stop('patterns must have the same number of columns as the number of distinct groups')
