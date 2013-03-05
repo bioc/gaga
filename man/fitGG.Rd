@@ -1,6 +1,7 @@
 \name{fitGG}
 \alias{fitGG}
 \alias{fitNN}
+\alias{fitNNSingleHyp}
 \alias{adjustfitNN}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Fit GaGa hierarchical model }
@@ -10,6 +11,8 @@
 
  fitNN fits a normal-normal hierarchical model (wrapper to
  call emfit in package EBarrays with the LNNMV model).
+ fitNNSingleHyp is the same as fitNN but only considers the pattern that all
+ groups are different from each other.
  
  adjustfitNN corrects a small sample-size bias in the fitNN estimation procedure.
 }
@@ -17,7 +20,9 @@
 fitGG(x, groups, patterns, equalcv = TRUE, nclust = 1, method =
  "quickEM", B, priorpar, parini, trace = TRUE)
 
-fitNN(x, groups, patterns, B, trace=TRUE)
+fitNN(x, groups, patterns, B=20, trace=TRUE)
+
+fitNNSingleHyp(x, groups, B=10, trace=TRUE)
 
 adjustfitNN(fit, pitrue, B=5, nsim=3, mc.cores=1)
 }

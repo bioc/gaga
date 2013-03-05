@@ -1,6 +1,6 @@
 useDynLib(gaga)
 
-export( adjustfitNN, checkfit, classpred, dcgamma, findgenes, fitGG, fitNN, forwsimDiffExpr, geneclus, getpar, mcgamma, parest, posmeansGG, powfindgenes, rcgamma, simGG, simLNN, simNN, simnewsamples, powclasspred, seqBoundariesGrid, buildPatterns, plotForwSim)
+export( adjustfitNN, checkfit, classpred, dcgamma, findgenes, fitGG, fitNN, fitNNSingleHyp, forwsimDiffExpr, geneclus, getpar, mcgamma, parest, posmeansGG, powfindgenes, rcgamma, simGG, simLNN, simNN, simnewsamples, powclasspred, seqBoundariesGrid, buildPatterns, plotForwSim)
 
 S3method(checkfit,gagafit)
 S3method(classpred,gagafit)

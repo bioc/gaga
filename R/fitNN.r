@@ -41,6 +41,36 @@ fitNN <- function(x, groups, patterns, B=20, trace=TRUE) {
 }
 
 
+fitNNSingleHyp <- function(x, groups, B=10, trace=TRUE) {
+  if (is(x, "exprSet") | is(x, "ExpressionSet")) {
+    if (is.character(groups) && length(groups) == 1) groups <- pData(x)[, groups]
+    x <- exprs(x)
+  }
+  else if (!is(x, "data.frame") & !is(x, "matrix")) {
+      stop("x must be an ExpressionSet, exprSet, data.frame or matrix")
+  }
+  #Define single pattern and other input parameters
+  K <- length(unique.default(groups))
+  patterns <- matrix(0:(K - 1),nrow=1)
+  colnames(patterns) <- unique.default(groups)
+  class(patterns) <- "gagahyp"  
+  groupid <- as.numeric(as.factor(groups))
+  hypothesis <- gaga:::makeEBarraysSingleHyp(paste(as.character(groupid),collapse=' '))
+  family <- EBarrays::eb.createFamilyLNNMV()
+  expx <- exp(x)
+  #Fit model & format output as nnfit object
+  verbose <- getOption("verbose")
+  options(verbose=trace)
+  nn.fit <- EBarrays::emfit(data=expx, family=family, hypotheses=hypothesis, groupid=groupid, num.iter=B)
+  options(verbose=verbose)
+  priorest <- gaga:::sigmaPriorEst(x=x,groupid=groupid,model='NN')
+  parest <- c(mu0=nn.fit@thetaEst[1,'theta1'],tau02=exp(nn.fit@thetaEst[1,'theta2']),priorest['v0'],priorest['sigma02'],probclus=1,probpat=nn.fit@probEst)
+  ans <- list(parest=parest, patterns=patterns, nn.fit=nn.fit, pp=matrix(1,nrow=nrow(x)))
+  class(ans) <- 'nnfit'
+  return(ans)
+}
+
+
 
 sigmaPriorEst <- function(x, groupid, model='LNN') {
 #Estimate sigma_j^2 ~ IG(.5*v0,.5*v0*sigma0^2) prior LNN & NN models via Method of Moments (as in package EBarrays)

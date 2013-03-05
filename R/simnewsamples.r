@@ -7,9 +7,9 @@ if (is(x, "exprSet") | is(x,"ExpressionSet")) {
   x <- exprs(x)
 } else if (!is(x,"data.frame") & !is(x,"matrix")) { stop("x must be an exprSet, data.frame or matrix") } 
 patterns <- fit$patterns
-v <- fit$pp
 groupsr <- groups2int(groups,patterns); K <- as.integer(max(groupsr)+1)
 groupsnewr <- groups2int(groupsnew,patterns)
+v <- fit$pp
 
 # Checks
 if ((max(groupsnewr)>max(groupsr)) | (min(groupsnewr)<min(groupsr))) stop('Groups indicated in groupsnew do not match with those indicated in groups')
@@ -26,8 +26,12 @@ munew <- matrix(NA,nrow=nrow(x),ncol=length(unique(groupsnewr))); colnames(munew
 xnew <- matrix(NA,nrow=nrow(x),ncol=length(groupsnewr))
 
 #Draw delta
-for (j in 2:ncol(v)) v[,j] <- v[,j]+v[,j-1]
-u <- runif(nrow(x)); d <- apply(u<v,1,function(z) which(z)[1])
+if (nrow(patterns)>1) {
+  for (j in 2:ncol(v)) v[,j] <- v[,j]+v[,j-1]
+  u <- runif(nrow(x)); d <- apply(u<v,1,function(z) which(z)[1])
+} else {
+  d <- rep(1,nrow(x))
+}
 
 #Draw sigma
 a.sigma <- .5*(par['v0']+ncol(x))
