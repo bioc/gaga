@@ -74,6 +74,30 @@ for (i in 1:nrow(patterns)) {
 }
 
 
+#Define a single hypothesis
+makeEBarraysSingleHyp <- function(x) {
+    patterns <- vector("list", length(x))
+    len <- FALSE
+    for (i in seq(along = patterns)) {
+        pat <- as.numeric(strsplit(x[i], "\\W+")[[1]])
+        if (is.logical(len)) {
+            len <- length(pat)
+            if (len == 0) stop("Pattern has length 0")
+        }
+        if (length(pat) != len || any(is.na(pat))) {
+            print(pat)
+            stop("Invalid pattern")
+        }
+        vals <- sort(unique(pat[pat > 0]))
+        patterns[[i]] <- vector("list", length(vals))
+        for (j in seq(along = vals)) {
+            patterns[[i]][[j]] <- (1:len)[pat == vals[j]]
+        }
+    }
+    new("ebarraysPatterns", patterns = patterns, ordered = FALSE)
+}
+
+
 
 #routine to adjust bias
 adjustfitNN <- function(fit, pitrue, B=5, nsim=3, mc.cores=1) {
