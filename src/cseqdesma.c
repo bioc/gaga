@@ -1,12 +1,9 @@
 #include <math.h>
-
 #include <stdio.h>
-
-
-
 #include "cstat.h"
-
 #include "cseqdesma.h"
+#include <R.h>
+#include <Rinternals.h>
 
 
 
@@ -82,7 +79,7 @@ void euC(double *ustop, double *fdrstop, double *fnrstop, double *powerstop, dou
 
 /* Evaluates realized utility for a single parametric or non-parametric boundary */
 
-/* Input arguments
+/* Input< arguments
 
   - b: boundary at which to evaluate the observed terminal utility, fnr, fdr, stopping time
 
@@ -774,7 +771,7 @@ void forwsim_geneC(int *simid, int *time, double *u, double *fdr, double *fnr, d
 
 
 
-  if ((*trace==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
+  if ((*trace==1) && ((i % B10)==0)) Rprintf("  %d iterations \n",i);
 
   }  //End loop over forw simulations
 
@@ -1062,7 +1059,7 @@ void forwsim_sampleC(int *simid, int *time, double *u, double *cc, double *summa
 
     }  //End loop over time
 
-    if ((*trace==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
+    if ((*trace==1) && ((i % B10)==0)) Rprintf("  %d iterations \n",i);
 
   }  //End loop over forw simulations
 
@@ -1216,19 +1213,19 @@ void initpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  d
 
     if ((*trace==1) && (i>1)) {
 
-      for (j=0; j<*nclust; j++) printf("%.6f ",alpha0[(i-1)*(*nclust)+j]);
+      for (j=0; j<*nclust; j++) Rprintf("%.6f ",alpha0[(i-1)*(*nclust)+j]);
 
-      for (j=0; j<*nclust; j++) printf("%.6f ",nu[(i-1)*(*nclust)+j]);
+      for (j=0; j<*nclust; j++) Rprintf("%.6f ",nu[(i-1)*(*nclust)+j]);
 
-      printf("%.6f %.6f ",balpha[0],nualpha[0]);
+      Rprintf("%.6f %.6f ",balpha[0],nualpha[0]);
 
-      for (j=0; j<*npat; j++) printf("%.6f ",prob[(i-1)*(*npat)+j]);
+      for (j=0; j<*npat; j++) Rprintf("%.6f ",prob[(i-1)*(*npat)+j]);
 
-      for (j=0; j<*nclust; j++) printf("%.6f ",rho[(i-1)*(*nclust)+j]);
+      for (j=0; j<*nclust; j++) Rprintf("%.6f ",rho[(i-1)*(*nclust)+j]);
 
-      printf("%.6f",lhood[i-1]);
+      Rprintf("%.6f",lhood[i-1]);
 
-      printf("\n");
+      Rprintf("\n");
 
     }
 
@@ -1238,17 +1235,17 @@ void initpar_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  d
 
 
 
-  for (j=0; j<*nclust; j++) printf("%.6f ",alpha0[(i-1)*(*nclust)+j]);
+  for (j=0; j<*nclust; j++) Rprintf("%.6f ",alpha0[(i-1)*(*nclust)+j]);
 
-  for (j=0; j<*nclust; j++) printf("%.6f ",nu[(i-1)*(*nclust)+j]);
+  for (j=0; j<*nclust; j++) Rprintf("%.6f ",nu[(i-1)*(*nclust)+j]);
 
-  printf("%.6f %.6f ",balpha[0],nualpha[0]);
+  Rprintf("%.6f %.6f ",balpha[0],nualpha[0]);
 
-  for (j=0; j<*npat; j++) printf("%.6f ",prob[(i-1)*(*npat)+j]);
+  for (j=0; j<*npat; j++) Rprintf("%.6f ",prob[(i-1)*(*npat)+j]);
 
-  for (j=0; j<*nclust; j++) printf("%.6f ",rho[(i-1)*(*nclust)+j]);
+  for (j=0; j<*nclust; j++) Rprintf("%.6f ",rho[(i-1)*(*nclust)+j]);
 
-  printf("%.6f \n",lhood[i-1]);
+  Rprintf("%.6f \n",lhood[i-1]);
 
 
 
@@ -1438,7 +1435,7 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
   for (i=0; i<*nclust; i++) { rho[i]= rhoini[i]; }
 
-  if ((*trace) ==1) printf("Starting Gibbs sampler... \n");
+  if ((*trace) ==1) Rprintf("Starting Gibbs sampler... \n");
 
   for (i=1, B10=(*B)/10; i<*B; i++) {
 
@@ -1448,7 +1445,7 @@ void fit_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  doubl
 
     simhyperpar_ggC(alpha0+i*(*nclust),nu+i*(*nclust),balpha+i,nualpha+i,nclust,rho+i*(*nclust),prob+i*(*npat),cluslist,equalcv,a_alpha0,b_alpha0,a_nu,b_nu,a_balpha,b_balpha,a_nualpha,b_nualpha,p_rho,p_prob,nrow,sumd,sumci,ngroupstot,sumalpha,sumlogalpha,suminvlambda,sumlambda,sumloglambda,npat,ngrouppat,gapprox,&settomean);
 
-    if ((*trace==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
+    if ((*trace==1) && ((i % B10)==0)) Rprintf("  %d iterations \n",i);
 
   }
 
@@ -1698,7 +1695,7 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
   //Refine initial estimates
 
-  if (*trace ==1) printf("Refining initial estimates...\n");
+  if (*trace ==1) Rprintf("Refining initial estimates...\n");
 
   maxit= 5; 
 
@@ -1720,31 +1717,31 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
   if (*trace ==1) {
 
-    printf("Starting EM algorithm...\n"); 
+    Rprintf("Starting EM algorithm...\n"); 
 
-    for (j=1; j<= *nclust; j++) printf("alpha0[%d] ",j);
+    for (j=1; j<= *nclust; j++) Rprintf("alpha0[%d] ",j);
 
-    for (j=1; j<= *nclust; j++) printf("    nu[%d] ",j);
+    for (j=1; j<= *nclust; j++) Rprintf("    nu[%d] ",j);
 
-    printf("   balpha    nualpha ");
+    Rprintf("   balpha    nualpha ");
 
-    for (j=0; j< *npat; j++) printf("probpat[%d] ",j+1);
+    for (j=0; j< *npat; j++) Rprintf("probpat[%d] ",j+1);
 
-    if (*nclust>1) for (j=0; j< *nclust; j++) printf("probclus[%d] ",j+1);
+    if (*nclust>1) for (j=0; j< *nclust; j++) Rprintf("probclus[%d] ",j+1);
 
-    printf("logl\n");
+    Rprintf("logl\n");
 
-    for (j=1; j<= *nclust; j++) printf("%9f ",exp(th[j]));
+    for (j=1; j<= *nclust; j++) Rprintf("%9f ",exp(th[j]));
 
-    for (j=1; j<= *nclust; j++) printf("%9f ",exp(th[*nclust +j]));
+    for (j=1; j<= *nclust; j++) Rprintf("%9f ",exp(th[*nclust +j]));
 
-    printf("%9f %9f ",exp(th[2*(*nclust)+1]),exp(th[2*(*nclust)+2]));
+    Rprintf("%9f %9f ",exp(th[2*(*nclust)+1]),exp(th[2*(*nclust)+2]));
 
-    for (j=0; j< *npat; j++) printf("%10f ",prob[j]);
+    for (j=0; j< *npat; j++) Rprintf("%10f ",prob[j]);
 
-    if (*nclust>1) for (j=0; j< *nclust; j++) printf("%11f ",rho[j]);
+    if (*nclust>1) for (j=0; j< *nclust; j++) Rprintf("%11f ",rho[j]);
 
-    printf("%9f\n",*lhood);
+    Rprintf("%9f\n",*lhood);
 
   }
 
@@ -1788,17 +1785,17 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
     if (*trace ==1) { 
 
-      for (j=1; j<= *nclust; j++) printf("%9f ",exp(th[j]));
+      for (j=1; j<= *nclust; j++) Rprintf("%9f ",exp(th[j]));
 
-      for (j=1; j<= *nclust; j++) printf("%9f ",exp(th[*nclust +j]));
+      for (j=1; j<= *nclust; j++) Rprintf("%9f ",exp(th[*nclust +j]));
 
-      printf("%9f %9f ",exp(th[2*(*nclust)+1]),exp(th[2*(*nclust)+2]));
+      Rprintf("%9f %9f ",exp(th[2*(*nclust)+1]),exp(th[2*(*nclust)+2]));
 
-      for (j=0; j< *npat; j++) printf("%10f ",prob[j]);
+      for (j=0; j< *npat; j++) Rprintf("%10f ",prob[j]);
 
-      if (*nclust>1) for (j=0; j< *nclust; j++) printf("%11f ",rho[j]);
+      if (*nclust>1) for (j=0; j< *nclust; j++) Rprintf("%11f ",rho[j]);
 
-      printf("%9f\n",*lhood);
+      Rprintf("%9f\n",*lhood);
 
     }
 
@@ -1820,17 +1817,17 @@ void fitEM_ggC(double *alpha0, double *nu, double *balpha, double *nualpha,  dou
 
     if (*trace ==1) { 
 
-      for (j=1; j<= *nclust; j++) printf("%9f ",exp(th[j]));
+      for (j=1; j<= *nclust; j++) Rprintf("%9f ",exp(th[j]));
 
-      for (j=1; j<= *nclust; j++) printf("%9f ",exp(th[*nclust +j]));
+      for (j=1; j<= *nclust; j++) Rprintf("%9f ",exp(th[*nclust +j]));
 
-      printf("%9f %9f ",exp(th[2*(*nclust)+1]),exp(th[2*(*nclust)+2]));
+      Rprintf("%9f %9f ",exp(th[2*(*nclust)+1]),exp(th[2*(*nclust)+2]));
 
-      for (j=0; j< *npat; j++) printf("%10f ",prob[j]);
+      for (j=0; j< *npat; j++) Rprintf("%10f ",prob[j]);
 
-      if (*nclust>1) for (j=0; j< *nclust; j++) printf("%11f ",rho[j]);
+      if (*nclust>1) for (j=0; j< *nclust; j++) Rprintf("%11f ",rho[j]);
 
-      printf("%9f\n",*lhood);
+      Rprintf("%9f\n",*lhood);
 
     }
 
@@ -1908,7 +1905,7 @@ void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, doubl
 
   if (*Bgibbs > 0) {      //Train MH proposal parameters
 
-    if ((*trace)==1) printf("Training proposal parameters...\n");
+    if ((*trace)==1) Rprintf("Training proposal parameters...\n");
 
     //Do a few Gibbs iterations 
 
@@ -2006,7 +2003,7 @@ void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, doubl
 
     //(*h_prob)= 2.0*(*h_prob); (*h_rho)= 2.0*(*h_rho);
 
-    if ((*trace)==1) printf("Done.\n");
+    if ((*trace)==1) Rprintf("Done.\n");
 
   } else {
 
@@ -2086,7 +2083,7 @@ void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, doubl
 
   if ((*trace) ==1) {
 
-    if ((*method)==1) printf("Starting Metropolis-Hastings sampler... \n"); else printf("Starting Simulated Annealing. Printing best log-posterior found so far...\n  Iteration log-posterior\n");
+    if ((*method)==1) Rprintf("Starting Metropolis-Hastings sampler... \n"); else Rprintf("Starting Simulated Annealing. Printing best log-posterior found so far...\n  Iteration log-posterior\n");
 
   }
 
@@ -2126,7 +2123,7 @@ void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, doubl
 
 	maxlhood= lhood[i];
 
-        if (*method ==0) printf("        %d   %.6f \n",i,lhood[i]);
+        if (*method ==0) Rprintf("        %d   %.6f \n",i,lhood[i]);
 
       }
 
@@ -2154,13 +2151,13 @@ void fitMH_ggC(double *acprop, double *alpha0, double *nu, double *balpha, doubl
 
     }
 
-    if ((*trace==1) && (*method==1) && ((i % B10)==0)) printf("  %d iterations \n",i);
+    if ((*trace==1) && (*method==1) && ((i % B10)==0)) Rprintf("  %d iterations \n",i);
 
   }
 
   (*acprop)= (*acprop)/(.0+ *B);
 
-  if ((*trace==1) && (*method==1)) printf("Proportion of accepted proposals: %.2f \n",*acprop);
+  if ((*trace==1) && (*method==1)) Rprintf("Proportion of accepted proposals: %.2f \n",*acprop);
 
 
 
@@ -3014,7 +3011,7 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
 */
 
-  int *groups0, i, j, k, *sel, usesumx=0, *nde, *nde0, B10, u;
+  int *groups0, i, j, k, *sel, usesumx=0, *nde, *nde0, u;
 
   double *v, lhood, *prob0, *probnew, *xboot, *threshold, *pboot;
 
@@ -3056,7 +3053,7 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
 
 
-  for (i=0, B10=(*B/10); i<(*B); i++) {   //loop over permutations
+  for (i=0; i<(*B); i++) {   //loop over permutations
 
     if (*znclust > 0) {
 
@@ -3100,7 +3097,7 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
     for (j=0; j<(*nthre); j++) { efp[j] += nde0[j]; }  //add to nb of false positives
 
-    //if (((i+1) % B10)==0) printf("  %d done \n",i+1);
+    //if (((i+1) % B10)==0) Rprintf("  %d done \n",i+1);
 
   }
 
@@ -4006,7 +4003,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
   int i, j, *dpred, *d, *groupspred, ncolpred, ncolsumx, zero=0, one=1, *nobsgroup, *cluslist;
 
-  double *xpred, *apred, *lpred, *vpred, *sumxpred, *prodxpred, *nobsxpred, cv, lhood, pcum, ccobs, seccobs, *ccgroupobs;
+  double *xpred, *apred, *lpred, *vpred, *sumxpred, *prodxpred, *nobsxpred, cv, lhood, ccobs, seccobs, *ccgroupobs;
 
 
 
@@ -4066,7 +4063,7 @@ void utsample_predC(double *ccall, double *seccall, double *ccgroup, int *ngroup
 
   (*ccall)= (*seccall)= 0; for (i=0; i<(*K); i++) { ccgroup[i]= 0; ngroup[i]= 0; }
 
-  cv= 1; pcum= Kprob[0];
+  cv= 1; //pcum= Kprob[0];
 
 
 
@@ -4556,7 +4553,7 @@ if ((*usesumx==0)) {                                               //if suff sta
 
 for (i=0; i<(*nsel); i++) {                                      //for each gene
 
-  //printf("Gene number= %d\n",i); //debug
+  //Rprintf("Gene number= %d\n",i); //debug
 
   //mybreak();  //debug
 
@@ -4778,7 +4775,7 @@ void estep(double *probest, double *rhoest, double *lhood, int *justlhood, int *
 
       for (k=0; k< *nclust; k++) {                                 //for each cluster
 
-	//        if (__iglobal==38) printf("i=%d, j=%d \n",i,j); //debug
+	//        if (__iglobal==38) Rprintf("i=%d, j=%d \n",i,j); //debug
 
 	r[sel[i]][j][k]= pdfcond_pat_clus_nopred(sel[i],j,k,alpha0,nu,balpha,nualpha,ngrouppat,colini,*ncolsumx,sumx,prodx,nobsx,equalcv) - *esteppars.c0;
 
@@ -4976,11 +4973,11 @@ double pdfcond_pat_clus_nopred(int geneid, int patid, int clusid, double *alpha0
 
   if (*equalcv == 1) {
 
-    //    printf("2: %.5f \n",balpha[0]*log(balpha[0]/nualpha[0]));
+    //    Rprintf("2: %.5f \n",balpha[0]*log(balpha[0]/nualpha[0]));
 
-    //printf("3: %.5f \n",-gamln(balpha));
+    //Rprintf("3: %.5f \n",-gamln(balpha));
 
-    //printf("1: %.5f \n",ngrouppat[patid]*(alpha0[clusid]*log(alpha0[clusid]/nu[clusid]) -gamln(alpha0+clusid)));
+    //Rprintf("1: %.5f \n",ngrouppat[patid]*(alpha0[clusid]*log(alpha0[clusid]/nu[clusid]) -gamln(alpha0+clusid)));
 
 
 
@@ -5456,7 +5453,7 @@ void simnewsamples_ggC(double *xnew, int *dnew, double *anew, double *lnew, int 
 
   for (i=0; i<(*nsel); i++) {                                 //generate expr. values for nsel genes only
 
-    //printf("%d",i); //debug
+    //Rprintf("%d",i); //debug
 
     for (k=0; k<(*nsamples); k++) {                           //generate nsamples samples for each gene
 

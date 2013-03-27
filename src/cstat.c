@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <R.h>
+#include <Rinternals.h>
 
 #include "cstat.h"
 
@@ -463,397 +465,26 @@ void lmbayes_knownvar (double *bpost, double *b, double **Vb, double **XtX, doub
 }
 
 
-/************************************************************************
-                         INPUT/OUTPUT FUNCTIONS
-************************************************************************/
-
-/* open file for input */
-FILE *openIn(char *name)
-{
-  if ((ifile=fopen(name,"r"))==NULL){
-    fserror("openIn","open file",name);
-  }
-  return(ifile);
-}
-
-/* open file for output */
-
-FILE *openOut(char *name)
-{
-  if ((ofile=fopen(name,"w"))==NULL){
-    fserror("openOut","open file",name);
-  }
-  return ofile;
-}
-
-
-/* --------------------   read in   ------------------------- */
-
-void scanFloat(char *txt, float *f)
-{
-  fscanf(ifile,txt);
-  if (fscanf(ifile," %f ",f) != 1) {
-    fserror ("scanFloat","read float",txt);
-  }
-}
-
-void scanDouble(char *txt,double *f)
-{
-  fscanf(ifile,txt);
-  if (fscanf(ifile," %lf ",f) != 1) {
-    fserror ("scanDouble","read double",txt);
-  }
-}
-
-void fscanDouble(FILE *ifile, char *txt, double *f)
-{
-  fscanf(ifile,txt);
-  if (fscanf(ifile," %lf ",f) != 1) {
-    fserror ("fscanDouble","read double",txt);
-  }
-}
-
-void scanInt(char *txt, int *n)
-{
-  int 	s;
-
-  fscanf(ifile,txt);
-  if ((s = fscanf(ifile," %d ",n)) != 1) {
-    fserror ("scanInt","read int",txt);
-  }
-}
-
-void fscanInt(FILE *ifile, char *txt, int *n)
-{
-	int 	s;
-
-  fscanf(ifile,txt);
-  if ((s = fscanf(ifile," %d ",n)) != 1) {
-    fserror ("fscanInt","read int",txt);
-  }
-}
-
-
-void scanLong(char *txt, long *n)
-{
-        int     s;
-
-  fscanf(ifile,txt);
-  if ((s = fscanf(ifile," %ld ",n)) != 1) {
-    fserror ("scanLong","read long",txt);
-  }
-}
-
-/* --------------------   read arrays   ------------------------- */
-
-void scanFloatArray(char *txt, float *x, int n)
-{
-	scanArray(txt,x,n);
-}
-
-void scanArray(char *txt, float *x, int n)
-{
-	int	i; 
-
-  fscanf(ifile,txt);
-  for(i=0;i<n;i++){
-    if (fscanf(ifile," %f ",&x[i]) != 1) {
-      fserror ("scanArray","read float array",txt);
-    }
-  }
-}
-
-void scanDoubleArray(char *txt, double *x, int n)
-{
-  int	i;
-
-  fscanf(ifile,txt);
-  for(i=0;i<n;i++){
-    if (fscanf(ifile," %lg ",&x[i]) != 1) {
-      fserror ("scanDoubleArray",
-	       "read double array",txt);
-    }
-  }
-}
-
-void fscanDoubleArray(FILE *in, double *x, int n)
-{
-  int	i;
-
-  for(i=0;i<n;i++){
-    if (fscanf(in," %lg ",&x[i]) != 1) {
-      /* printf("i=%d\n",i); */
-      fserror("fscanDoubleArray","read double array","");
-    }
-  }
-}
-
-void scanString(char *txt, char *s, int n)
-{
-  fgets(s,n,ifile);
-}
-  
-
-void fscanString(FILE *ifile, char *txt, char *s, int n)
-{
-  fgets(s,n,ifile);
-}
-  
-void scanDoubleMatrix(char *txt,double **x,int r,int c)
-{
-  int	i,j;
-  
-  fscanf(ifile,txt);
-  for(i=0;i<r;i++)
-    for(j=0;j<c;j++){
-      if (fscanf(ifile," %lg ",&x[i][j]) != 1) {
-	fserror ("scanDoubleMatrix","read double matrix",txt);
-      }
-    }
-}
-
-void fscanDoubleMatrix(FILE *ifile, double **x,int r,int c)
-{
-  int	i,j;
-  
-  for(i=0;i<r;i++)
-    for(j=0;j<c;j++){
-      if (fscanf(ifile," %lg ",&x[i][j]) != 1) {
-	exit(1);
-      }
-    }
-}
-
-void scanIntArray(char *txt, int *x, int n)
-{
-  int	i;
-
-  fscanf(ifile,txt);
-  for(i=0;i<n;i++){
-    if (fscanf(ifile," %d ",&x[i]) != 1) {
-      fserror ("scanIntArray","read int array",txt);
-    }
-  }
-}
-
-void fscanIntArray(FILE *ifile, int *x, int n)
-{
-  int	i;
-
-  for(i=0;i<n;i++){
-    if (fscanf(ifile," %d ",&x[i]) != 1) {
-      fserror("fscanIntArray","read int array","");
-    }
-  }
-}
-
-
-/* ------------------------  write scalars  ------------------------ */
-void writeInt(int i)
-{
-  int s;
-  s=fprintf(ofile,"%d\n",i);
-  if(s<0)
-    fserror("writeInt","write int","");
-}
-
-void writeLong(long i)
-{
-  int s;
-  s=fprintf(ofile,"%ld\n",i);
-  if (s<0)
-    fserror("writeLong","write long","");
-    
-}
-
-
-void writeFloat(float x)
-{
-  int s;
-  s=fprintf(ofile,"%f\n",x);
-  if (s<0)
-    fserror("writeFloat","write float","");
-  
-}
-
-void writeDouble(double x)
-{
-  int s;
-  s=fprintf(ofile,"%5.3e\n",x);
-  if (s<0)
-    fserror("writeDouble","write double","");
-}
-
-
-/* -----------------------  write arrays   --------------------- */
-
-void fwriteDoubleArray(FILE *f, double *x, int rows, int cols)
-{
-  int	i,j,s1,s2;
-  
-  s1 = 0;
-  for(i=0;i<rows;i++){
-    for(j=0;j<cols;j++){
-      if(j%10 == 9)
-	fprintf(f,"\n\t");
-      s1=fprintf(f,"%5.3e ",x[i*cols+j]);
-      if (s1<0) break;
-    }
-    s2=fprintf(f,"\n");
-    if ((s2<0)|(s1<0))
-      fserror("fwriteDoubleArray","write double array","");
-  }
-}
-
-void fwriteIntArray(FILE *f, int *x, int rows, int cols)
-{
-  int	i,j,s1,s2;
-  
-  s1 = 0;
-  for(i=0;i<rows;i++){
-    for(j=0;j<cols;j++){
-      if(j%10 == 9)
-	fprintf(f,"\n\t");
-      s1=fprintf(f,"%d\t",x[i*cols+j]);
-      if (s1<0) break;
-    }
-    s2=fprintf(f,"\n");
-    if ((s2<0)|(s1<0))
-      fserror("fwriteIntArray","write int array","");
-  }
-}
-
-
-void writeIntArray(int *x, int rows, int cols)
-{
-  fwriteIntArray(ofile,x,rows,cols);
-}
-
-void fwriteIntMatrix(FILE *f, int **x, int rows, int cols)
-{
-  int	i,j,s1;
-  
-  for(i=0;i<rows;i++){
-    for(j=0;j<cols;j++){
-      if(j%10 == 9)
-	fprintf(f,"\n\t");
-      s1=fprintf(f,"%d\t",x[i][j]);
-      if (s1<0) 
-	fserror("fwriteIntMatrix","write int matrix","");
-    }
-    fprintf(f,"\n");
-  }
-}
-
-void writeIntMatrix(int **x, int rows, int cols)
-{
-  fwriteIntMatrix(ofile,x,rows,cols);
-}
-
-void writeDoubleArray(double *x,int rows,int cols)
-{
-  fwriteDoubleArray(ofile,x,rows,cols);
-}
-
-void fwriteDoubleMatrix2(FILE *f, double **x, int rows, int cols)
-{
-  int	i, j, s;
-  
-  for(i=0;i<rows;i++){
-    for(j=0;j<cols;j++){
-      if(j%10 == 9){
-	fprintf(f,"\n\t");
-      }
-      s=fprintf(f,"%5.3e ",x[i][j]);
-      if (s<0)
-	fserror("fwriteDoubleMatrix2","write double matrix","");
-    }
-    fprintf(f,"\n");
-  }
-}
-
-void writeDoubleMatrix2(double **x, int rows, int cols)
-{
-  fwriteDoubleMatrix2(ofile,x,rows,cols);
-}
-
-void writeDoubleMatrix(double **x, int rows, int cols)
-{
-  int	i,j, c,s;
-  
-  for(i=0;i<rows;i++){
-    for(j=0, c=0;j<cols;j++){
-      if(++c > 10){
-	fprintf(ofile,"\n\t");
-	c = 0;
-      }
-      s=fprintf(ofile,"%5.3e ",x[i][j]);
-      if (s<0)
-	fserror("fwriteDoubleMatrix","write double matrix","");
-    }
-    fprintf(ofile,"\n");
-  }
-}
-
-void writeFloatArray(float *x,int rows,int cols)
-{
- writeArray(x,rows,cols);
-}
-
-void writeArray(float *x,int rows,int cols)
-{
-  int	
-    i,j, c,s;
-  
-  for(i=0;i<rows;i++){
-    for(j=0,c=0;j<cols;j++){
-      if (c++>9){
-	fprintf(ofile,"\n\t");
-	c = 0;
-      }
-      s=fprintf(ofile,"%5.3e ",x[i*cols+j]);
-      if (s<0)
-	fserror("fwriteDoubleMatrix","write double matrix","");
-    }
-    fprintf(ofile,"\n");
-  }
-}
-
-/***************************   error   *************************** */ 
-
-void fserror(char *proc, char *act, char *what){
-  /* writes error message and aborts */
-  
-  fprintf(stderr, "\n ** Error ");
-  if (proc[0]!='\0') /* not empty */
-    fprintf(stderr, " in function '%s', ", proc);
-  if (act[0]!='\0') /* not empty */
-    fprintf(stderr, " trying to %s", act);
-  if (what[0]!='\0') /* not empty */
-    fprintf(stderr, " '%s'", what);
-  fprintf(stderr, "\n ** .. exiting program");
-  fprintf(stderr, " (from a function in 'interface.c').\n");
-  
-  exit(1);
-}
-
 /******************************************************************************************
                                       DEBUG MESSAGES ETC.
 ******************************************************************************************/
 
 void errorC(char *module, char *mess, int nr)              
 {
-   	printf("\n *** ERROR # %d in %s***\n %s",nr,module, mess);
-	printf(  " exiting program \n");
-	exit(1);
+   	Rprintf("\n *** ERROR # %d in %s***\n %s",nr,module, mess);
+	Rprintf(  " exiting program \n");
+
+	Rf_error("Internal error occurred in package gaga");
+	//exit(1);
 }
 
 void err_msg(char *fct, char *txt, int n1, int n2, int n3)
 { /* print error message */
-  printf("\n\n *** Error in %s \n", fct);
-  printf(txt,n1,n2,n3); /* n1,n2 allows to include numbers in txt */
-  printf("\n");
-  exit(1);
+  Rprintf("\n\n *** Error in %s \n", fct);
+  Rprintf(txt,n1,n2,n3); /* n1,n2 allows to include numbers in txt */
+  Rprintf("\n");
+  Rf_error("Internal error occurred in package gaga");
+  //exit(1);
 }
 
 
@@ -1084,20 +715,21 @@ void free_iarray3(int ***a, int n1, int n2, int n3) {
 
 void nrerror(char *proc, char *act, char *what) 
 { 
-  void exit(); 
+  //void exit(); 
  
-  fprintf(stderr, "\n ** Error "); 
+  Rprintf("\n ** Error "); 
   if (proc[0]!='\0') /* not empty */ 
-    fprintf(stderr, " in function '%s', ", proc); 
+    Rprintf(" in function '%s', ", proc); 
   if (act[0]!='\0') /* not empty */ 
-    fprintf(stderr, " trying to %s", act); 
+    Rprintf(" trying to %s", act); 
   if (what[0]!='\0') /* not empty */ 
-    fprintf(stderr, " '%s',", what); 
+    Rprintf(" '%s',", what); 
   else 
-    fprintf(stderr, ", "); 
-  fprintf(stderr, "\n ** .. exiting program.\n"); 
-  fprintf(stderr, "\n ** (a function in 'nrutil.c').\n"); 
-  exit(1); 
+    Rprintf(", "); 
+  Rprintf("\n ** .. exiting program.\n"); 
+  Rprintf("\n ** (a function in 'nrutil.c').\n"); 
+  Rf_error("Internal error occurred in package gaga");
+  //exit(1); 
 } 
 
 
@@ -1880,7 +1512,7 @@ void rdirichlet(double *w, double *alpha, int *p)
     W -= w[j]; 
   } 
   w[*p-1] = W; 
-  if (W < 0) printf("\n\n **** non-pos dirich gen!! **\n"); 
+  if (W < 0) Rprintf("\n\n **** non-pos dirich gen!! **\n"); 
 } 
 
 
@@ -3550,9 +3182,10 @@ double genunf(double low,double high)
 static double genunf;
 
     if(!(low > high)) goto S10;
-    printf("LOW > HIGH in GENUNF: LOW %16.6E HIGH: %16.6E\n",low,high);
-    puts("Abort");
-    exit(1);
+    Rprintf("LOW > HIGH in GENUNF: LOW %16.6E HIGH: %16.6E\n",low,high);
+    Rprintf("Abort");
+    Rf_error("Internal error occurred in package gaga");
+    //exit(1);
 S10:
     genunf = low+(high-low)*ranf();
     return genunf;
@@ -4035,10 +3668,11 @@ static long mltmod,a0,a1,k,p,q,qh,rh;
       machine. On a different machine recompute H
 */
     if(!(a <= 0 || a >= m || s <= 0 || s >= m)) goto S10;
-    puts(" a, m, s out of order in mltmod - ABORT!");
-    printf(" a = %12ld s = %12ld m = %12ld\n",a,s,m);
-    puts(" mltmod requires: 0 < a < m; 0 < s < m");
-    exit(1);
+    Rprintf(" a, m, s out of order in mltmod - ABORT!");
+    Rprintf(" a = %12ld s = %12ld m = %12ld\n",a,s,m);
+    Rprintf(" mltmod requires: 0 < a < m; 0 < s < m");
+    Rf_error("Internal error occurred in package gaga");
+    //exit(1);
 S10:
     if(!(a < h)) goto S20;
     a0 = a;
@@ -4151,8 +3785,9 @@ static long curntg = 1;
     if(getset == 0) *g = curntg;
     else  {
         if(*g < 0 || *g > numg) {
-            puts(" Generator number out of range in GSCGN");
-            exit(0);
+            Rprintf(" Generator number out of range in GSCGN");
+            Rf_error("Internal error in package gaga\n");
+	    //exit(0);
         }
         curntg = *g;
     }
@@ -4278,9 +3913,9 @@ static long qrgnin;
 */
     gsrgs(0L,&qrgnin);
     if(qrgnin) goto S10;
-    printf(
-      " INITGN called before random number generator  initialized -- abort!\n");
-    exit(1);
+    Rprintf(" INITGN called before random number generator  initialized -- abort!\n");
+    Rf_error("Internal error occurred in package gaga");
+    //exit(1);
 S10:
     gscgn(0L,&g);
     if(-1 != isdtyp) goto S20;
@@ -4299,8 +3934,9 @@ S30:
     *(Xlg2+g-1) = mltmod(Xa2w,*(Xlg2+g-1),Xm2);
     goto S50;
 S40:
-    printf("isdtyp not in range in INITGN");
-    exit(1);
+    Rprintf("isdtyp not in range in INITGN");
+    Rf_error("Internal error occurred in package gaga");
+    //exit(1);
 S50:
     *(Xcg1+g-1) = *(Xlg1+g-1);
     *(Xcg2+g-1) = *(Xlg2+g-1);
@@ -4599,7 +4235,7 @@ void bspline(double **W, double *x, int *nx, int *degree, double *knots, int *nk
    */
   int i,j;
   if (*nknots<(*degree+2)) {
-    printf("error: number of knots must be >= degree + 2");
+    Rprintf("error: number of knots must be >= degree + 2");
   } else {
     for (i=0; i<(*nx); i++) {
       for (j=0; j<(*nknots - *degree -1); j++) {
@@ -4624,7 +4260,7 @@ void mspline(double **W, double *x, int *nx, int *degree, double *knots, int *nk
   //M-spline basis eval at vector of values x. Normalized to integrate to 1 wrt x
   int i,j;
   if (*nknots<(*degree+2)) {
-    printf("error: number of knots must be >= degree + 2");
+    Rf_error("error: number of knots must be >= degree + 2");
   } else {
     for (i=0; i<(*nx); i++) {
       for (j=0; j<(*nknots - *degree -1); j++) {

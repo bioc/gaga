@@ -139,7 +139,7 @@ adjustfitNN <- function(fit, pitrue, B=5, nsim=3, mc.cores=1) {
     ans <- double(nsim)
     for (i in 1:nsim) {
       xsim <- simNN(n=nrow(fit$pp),m=c(3,2),p.de=pitrue,mu0=pars['mu0'],tau0=tau0,v0=pars['v0'],sigma0=sigma0)
-      fit <- fitNN(xsim,group='group',B=B,trace=FALSE)
+      fit <- fitNN(xsim,groups='group',B=B,trace=FALSE)
       ans[i] <- getpar(fit)['probpat2']
     }
     return(mean(ans))
@@ -150,7 +150,7 @@ adjustfitNN <- function(fit, pitrue, B=5, nsim=3, mc.cores=1) {
   if (length(pitrue)<10) stop('pitrue must be at least length 10, in order to fit gam with maximum degrees of freedom')
   if (mc.cores>1) {
     if ('multicore' %in% loadedNamespaces()) {
-      probpatExpect <- mclapply(pitrue,f,pars=getpar(fit),nsim=nsim,mc.cores=mc.cores)
+      probpatExpect <- multicore::mclapply(pitrue,f,pars=getpar(fit),nsim=nsim,mc.cores=mc.cores)
     } else stop('multicore library has not been loaded!')
   } else {
     probpatExpect <- lapply(pitrue,f,pars=getpar(fit),nsim=nsim)

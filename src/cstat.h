@@ -61,48 +61,6 @@ void lmbayes (double *bpost, double *spost, double *b, double **Vb, double *a_s,
 void lmbayes_knownvar (double *bpost, double *b, double **Vb, double **XtX, double **invXtX, double *Xty, double *sigma, int *B, double *y, double **X, int *n, int *p, int *useXtX, double *mpr, double **Spr_inv, double *tauprior); //same as lmbayes with known variance sigma^2
 
 
-/**************************************************************/
-/* Input/output functions (interface)                         */
-/**************************************************************/
-
-FILE *openIn(char *);
-FILE *openOut(char *);
-void scanFloat(char *, float *);
-void scanDouble(char *, double *);
-void scanInt(char *, int *);
-void fscanDouble(FILE *,char *, double *);
-void fscanInt(FILE *,char *, int *);
-void scanLong(char *, long *);
-
-void scanFloatArray(char *,float *, int);
-void scanArray(char *,float *, int);
-void scanDoubleArray(char *,double *, int);
-void scanString(char *txt, char *s, int n);
-void fscanString(FILE *,char *txt, char *s, int n);
-void fscanDoubleArray(FILE *,double *, int);
-void scanDoubleMatrix(char *, double **, int, int);
-void fscanDoubleMatrix(FILE *ifile, double **x,int r,int c);
-void scanIntArray(char *,int *, int);
-void fscanIntArray(FILE *ifile, int *x, int n);
-
-void writeInt(int);
-void writeLong(long i);
-void writeFloat(float);
-void writeDouble(double);
-
-void writeIntArray(int *,int, int);
-void fwriteIntArray(FILE *, int *,int, int);
-void fwriteIntMatrix(FILE *f, int **x, int rows, int cols);
-void writeIntMatrix(int **x, int rows, int cols);
-void writeDoubleArray(double *,int, int);
-void writeDoubleMatrix2(double **, int , int);
-void fwriteDoubleArray(FILE *, double *,int, int);
-void fwriteDoubleMatrix2(FILE *, double **, int , int);
-void writeDoubleMatrix(double **, int, int);
-void writeFloatArray(float *, int, int);
-void writeArray(float *, int, int); 
-
-void fserror(char *proc, char *act, char *what);
 
 /**************************************************************/
 /* Debug messages etc. (mess)                                 */
