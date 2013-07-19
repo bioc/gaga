@@ -149,9 +149,9 @@ adjustfitNN <- function(fit, pitrue, B=5, nsim=3, mc.cores=1) {
   if (missing(pitrue)) { pitrue <- seq(probpatObs/3,probpatObs,length=10) }
   if (length(pitrue)<10) stop('pitrue must be at least length 10, in order to fit gam with maximum degrees of freedom')
   if (mc.cores>1) {
-    if ('multicore' %in% loadedNamespaces()) {
-      probpatExpect <- multicore::mclapply(pitrue,f,pars=getpar(fit),nsim=nsim,mc.cores=mc.cores)
-    } else stop('multicore library has not been loaded!')
+    if ('parallel' %in% loadedNamespaces()) {
+      probpatExpect <- parallel::mclapply(pitrue,f,pars=getpar(fit),nsim=nsim,mc.cores=mc.cores)
+    } else stop('parallel library has not been loaded!')
   } else {
     probpatExpect <- lapply(pitrue,f,pars=getpar(fit),nsim=nsim)
   }

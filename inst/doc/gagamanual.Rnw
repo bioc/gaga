@@ -637,7 +637,7 @@ up to a maximum number of batches \texttt{maxBatch}.
 The whole process is repeated \texttt{B} times.
 Notice that, although not illustrated here,
 parallel processing can be used to speed up
-computations ({\it e.g.} see \texttt{mcapply} from package \texttt{multicore}).
+computations ({\it e.g.} see \texttt{mcapply} from package \texttt{parallel}).
 
 <<forwsim>>=
 fs1 <- forwsimDiffExpr(gg1, x=x, groups=1:2,

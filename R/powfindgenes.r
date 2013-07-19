@@ -18,9 +18,9 @@ f <- function(simid) {
 }
 #Do simulations
 if (mc.cores>1) {
-  if ('multicore' %in% loadedNamespaces()) {
-    ans <- multicore::mclapply(1:B, f, mc.cores=mc.cores, mc.preschedule=TRUE)
-  } else stop('multicore library has not been loaded!')
+  if ('parallel' %in% loadedNamespaces()) {
+    ans <- parallel::mclapply(1:B, f, mc.cores=mc.cores, mc.preschedule=TRUE)
+  } else stop('parallel library has not been loaded!')
 } else {
   ans <- lapply(1:B, f)
 }

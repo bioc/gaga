@@ -11,9 +11,9 @@ powsimprior.nnfit <- function(fit, m, ngenes, fdrmax=.05, B=1000, mc.cores=1) {
     findgenes(fitnew,fdrmax=fdrmax)$truePos
   }
   if (mc.cores>1) {
-    if ('multicore' %in% loadedNamespaces()) {
-      ans <- multicore::mclapply(1:B, f, mc.cores=mc.cores, mc.preschedule=TRUE)
-    } else stop('multicore library has not been loaded!')
+    if ('parallel' %in% loadedNamespaces()) {
+      ans <- parallel::mclapply(1:B, f, mc.cores=mc.cores, mc.preschedule=TRUE)
+    } else stop('parallel library has not been loaded!')
   } else {
     ans <- lapply(1:B, f)
   }

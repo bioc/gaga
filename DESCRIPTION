@@ -1,11 +1,11 @@
 Package: gaga
 Version: 2.7.0
-Date: 2013-03-27
+Date: 2013-07-18
 Title: GaGa hierarchical model for high-throughput data analysis
 Author: David Rossell <rosselldavid@gmail.com>.
 Maintainer: David Rossell <rosselldavid@gmail.com>
 Depends: R (>= 2.8.0), Biobase, coda, EBarrays, mgcv
-Enhances: multicore
+Enhances: parallel
 Description: Implements the GaGa model for high-throughput data analysis, including differential expression analysis, supervised gene clustering and classification. Additionally, it performs sequential sample size calculations using the GaGa and LNNGV models (the latter from EBarrays package).
 License: GPL (>= 2)
 biocViews: OneChannel,MassSpectrometry,MultipleComparisons,DifferentialExpression,Classification
