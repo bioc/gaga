@@ -5,6 +5,7 @@ export( adjustfitNN, checkfit, classpred, dcgamma, findgenes, fitGG, fitNN, fitN
 S3method(checkfit,gagafit)
 S3method(classpred,gagafit)
 S3method(findgenes,gagafit)
+S3method(findgenes,matrix)
 S3method(findgenes,nnfit)
 S3method(forwsimDiffExpr,gagafit)
 S3method(forwsimDiffExpr,nnfit)
