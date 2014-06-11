@@ -13,8 +13,8 @@ geneclus(gg.fit, method='posprob')
 \arguments{
   \item{gg.fit}{GaGa or MiGaGa fit (object of type \code{gagafit}, as
     returned by \code{fitGG}). }
-  \item{method}{For \code{method==1} samples are assigned to pattern
-    with highest posterior probability, and for \code{method==1} to the
+  \item{method}{For \code{method=='posprob'} samples are assigned to pattern
+    with highest posterior probability, and for \code{method=='likelihood'} to the
     pattern with highest 
     likelihood (e.g. assuming equal a priori prob for all patterns)}
 }
