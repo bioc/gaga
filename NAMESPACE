@@ -1,6 +1,7 @@
 useDynLib(gaga)
 
-importFrom(coda,as.mcmc)
+import(Biobase, EBarrays, mgcv)
+importFrom(coda,as.mcmc,mcmc)
 
 export( adjustfitNN, checkfit, classpred, dcgamma, findgenes, fitGG, fitNN, fitNNSingleHyp, forwsimDiffExpr, geneclus, getpar, mcgamma, parest, posmeansGG, powfindgenes, rcgamma, simGG, simLNN, simNN, simnewsamples, powclasspred, seqBoundariesGrid, buildPatterns, plotForwSim)
 

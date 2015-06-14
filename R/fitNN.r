@@ -1,5 +1,4 @@
 fitNN <- function(x, groups, patterns, B=20, trace=TRUE) {
-  require(EBarrays)
   if (is(x, "exprSet") | is(x, "ExpressionSet")) {
     if (is.character(groups) && length(groups) == 1) {
       groups <- as.factor(pData(x)[, groups])
@@ -55,7 +54,7 @@ fitNNSingleHyp <- function(x, groups, B=10, trace=TRUE) {
   colnames(patterns) <- unique.default(groups)
   class(patterns) <- "gagahyp"  
   groupid <- as.numeric(as.factor(groups))
-  hypothesis <- gaga:::makeEBarraysSingleHyp(paste(as.character(groupid),collapse=' '))
+  hypothesis <- makeEBarraysSingleHyp(paste(as.character(groupid),collapse=' '))
   family <- EBarrays::eb.createFamilyLNNMV()
   expx <- exp(x)
   #Fit model & format output as nnfit object
@@ -63,7 +62,7 @@ fitNNSingleHyp <- function(x, groups, B=10, trace=TRUE) {
   options(verbose=trace)
   nn.fit <- EBarrays::emfit(data=expx, family=family, hypotheses=hypothesis, groupid=groupid, num.iter=B)
   options(verbose=verbose)
-  priorest <- gaga:::sigmaPriorEst(x=x,groupid=groupid,model='NN')
+  priorest <- sigmaPriorEst(x=x,groupid=groupid,model='NN')
   parest <- c(mu0=nn.fit@thetaEst[1,'theta1'],tau02=exp(nn.fit@thetaEst[1,'theta2']),priorest['v0'],priorest['sigma02'],probclus=1,probpat=nn.fit@probEst)
   ans <- list(parest=parest, patterns=patterns, nn.fit=nn.fit, pp=matrix(1,nrow=nrow(x)))
   class(ans) <- 'nnfit'
@@ -157,7 +156,7 @@ adjustfitNN <- function(fit, pitrue, B=5, nsim=3, mc.cores=1) {
   }
   probpatExpect <- unlist(probpatExpect)
   #True probpat as a smooth function of the estimated probpat
-  require(mgcv)
+  #require(mgcv)
   gam1 <- gam(pitrue ~ s(probpatExpect))
   newdata <- data.frame(probpatExpect=seq(min(probpatExpect),max(probpatExpect),length=1000))
   newdata$pitrue <- predict(gam1,newdata=newdata)

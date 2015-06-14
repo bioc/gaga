@@ -1,0 +1,11 @@
+citHeader("Please cite the paper below when using gaga, it took a lot of effort to develop.")
+
+citEntry(entry="article",
+        author= "Rossell D.",
+        title= "GaGa: a Parsimonious and Flexible Model for Differential Expression Analysis",
+        journal= "Annals of Applied Statistics",
+        year="2009",
+        volume=3,
+        pages="1035-1051",
+        textVersion= "Rossell D. GaGa: a Parsimonious and Flexible Model for Differential Expression Analysis. Annals of Applied Statistics, 3:1035-1051",
+)
