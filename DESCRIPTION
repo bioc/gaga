@@ -1,6 +1,6 @@
 Package: gaga
-Version: 2.53.0
-Date: 2015-06-14
+Version: 2.53.1
+Date: 2025-02-26
 Title: GaGa hierarchical model for high-throughput data analysis
 Author: David Rossell <rosselldavid@gmail.com>.
 Maintainer: David Rossell <rosselldavid@gmail.com>
