@@ -23,7 +23,6 @@ static const char css_c_sccs_id[] = "@(#)$Workfile: rand.c$ $Revision: 5$";
 static long is1=123456789, is2=981963; 
 static int set=0;
 
-FILE	*ifile, *fopen(), *ofile;
 int nv = 0;
 
 long Xm1,Xm2,Xa1,Xa2,Xcg1[32],Xcg2[32],Xa1w,Xa2w,Xig1[32],Xig2[32],Xlg1[32],
@@ -1474,7 +1473,6 @@ int rdisc(double *probs, int nvals) {
 
 double rbetaC(double alpha, double beta) 
 { 
-      double gamdev(); 
       double x, y; 
        
       x = gamdev(alpha);               /* X ~ gamma(alpha) */ 

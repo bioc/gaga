@@ -3015,10 +3015,6 @@ void expected_fp(double *efp, double *fdrseq, int *nthre, int *B, int *niter, do
 
   double *v, lhood, *prob0, *probnew, *xboot, *threshold, *pboot;
 
-  //FILE *ifile; //debug
-
-
-
   if (*B < 10) (*B)= 10; //ensure a minimum amount of permutations
 
   nde= ivector(0,*nthre); nde0= ivector(0,*nthre); threshold= dvector(0,*nthre);
@@ -4507,11 +4503,6 @@ void pp_ggC(double *v, double *lhood, int *nsel, int *sel, int *ncol, double *x,
 
   double vsum, r0=0, rcur, rsum, lgene;
 
-  //  FILE *ifile; //debug
-
-  //ifile= openOut("lhood.txt"); //debug
-
-
 
 colini= ivector(0,*npat);
 
@@ -4567,8 +4558,6 @@ for (i=0; i<(*nsel); i++) {                                      //for each gene
 
       rcur= pdfcond_pat_clus(sel[i],j,m,alpha0,nu,balpha,nualpha,ngrouppat,colini,ncolsumx,sumx,sumxpred,prodx,prodxpred,nobsx,nobsxpred,equalcv,usexpred);
 
-      //      if (j==(*npat -1)) fprintf(ifile,"%.6f \n",rcur); else fprintf(ifile,"%.6f ",rcur); //debug
-
       lgene += exp(rcur)*prob[j]*rho[m];
 
       if (firstclus==1) { r0= rcur; firstclus= 0; } else { rsum += exp(rcur-r0)*rho[m]/rho[0]; }
@@ -4593,13 +4582,9 @@ for (i=0; i<(*nsel); i++) {                                      //for each gene
 
   (*lhood) += log(lgene);
 
-  //  fprintf(ifile,"%.6f \n",log(lgene)); //debug
-
 }                                                                //end for each gene
 
 
-
-//fclose(ifile); //debug
 
 free_ivector(colini,0,*npat);
 
@@ -4737,10 +4722,6 @@ void estep(double *probest, double *rhoest, double *lhood, int *justlhood, int *
 
   double *lgene, ***r, **patclus, sumprobest, sumrhoest, *alpha0, *nu, *balpha, *nualpha;
 
-  //  FILE *ifile; //debug
-
-
-
   //put parameter values back to original scale
 
   alpha0= dvector(0,*nclust); nu= dvector(0,*nclust);
@@ -4792,14 +4773,6 @@ void estep(double *probest, double *rhoest, double *lhood, int *justlhood, int *
     (*lhood) += log(lgene[i] + 1.0E-100); //avoid 0 likelihood by adding offset
 
   }
-
-
-
-  //ifile= openOut("lhood.dat"); //debug
-
-  //for (i=0; i<(*nsel); i++) { fprintf(ifile,"%d %.8f \n",i,lgene[i]); } //debug
-
-  //fclose(ifile); //debug
 
 
 
@@ -4884,10 +4857,6 @@ void lhoodnopat(double *probest, double *rhoest, double *lhood, int *justlhood, 
   int i, j, k;
 
   double *lgene, ***r, **patclus, *alpha0, *nu, *balpha, *nualpha;
-
-  //  FILE *ifile; //debug
-
-
 
   //put parameter values back to original scale
 
@@ -5632,13 +5601,6 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
   double u, vcum, rsum, lambda, a, b1, b2, s, *vclus, *sumxpred, *prodxpred, *nobsxpred;
 
 
-
-  //FILE *ofile; //debug
-
-  //ofile= openOut("simpar.txt"); //debug
-
-
-
   sumxpred= dvector(0,1); prodxpred= dvector(0,1); nobsxpred= dvector(0,1); //never used: initialized to avoid warnings
 
 
@@ -5689,10 +5651,6 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
 
 
-    //fprintf(ofile,"%d ",di); //debug
-
-
-
     // draw cluster indicator
 
     if (*nclust>1) {
@@ -5723,10 +5681,6 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
 
 
-    //fprintf(ofile,"%d ",ci); //debug
-
-
-
     // draw alpha and l for each group
 
     if (*equalcv == 1) { 
@@ -5739,19 +5693,13 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
       sumalpha[ci] += a; sumlogalpha[ci] += log(a);
 
-      //fprintf(ofile,"%f ", a); //debug
-
       for (j=0; j<ngrouppat[di]; j++) {
 
 	lambda= 1.0/gengam(alpha0[ci]/nu[ci] + a*sumx[i*ncolsumx+colini[di]+j], alpha0[ci] + a*nobsx[colini[di]+j]);
 
 	suminvlambda[ci] += 1.0/lambda; sumlambda[ci] += lambda; sumloglambda[ci] += log(lambda);
 
-        //fprintf(ofile,"%f ", lambda); //debug
-
       }
-
-      //if (di==0) fprintf(ofile,"%f \n",lambda); else fprintf(ofile,"\n"); //debug
 
     } else {
 
@@ -5784,10 +5732,6 @@ void simpar_ggC(double *ngroupstot, double *sumd, double *sumci, double *sumalph
 
 
   free_dvector(sumxpred,0,1); free_dvector(prodxpred,0,1); free_dvector(nobsxpred,0,1);
-
-
-
-  //fclose(ofile); //debug
 
 
 
